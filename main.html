@@ -8,11 +8,29 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #f0f0f0;
             color: #333;
             text-align: center;
             margin: 0;
             padding: 0;
+            animation: changeBackgroundColor 5s infinite alternate;
+        }
+
+        @keyframes changeBackgroundColor {
+            0% {
+                background-color: #f0f0f0;
+            }
+            25% {
+                background-color: #e5e5e5;
+            }
+            50% {
+                background-color: #d9d9d9;
+            }
+            75% {
+                background-color: #cccccc;
+            }
+            100% {
+                background-color: #c0c0c0;
+            }
         }
 
         header {
@@ -70,6 +88,11 @@
                 opacity: 0.5;
             }
         }
+
+        video {
+            width: 100%;
+            height: auto;
+        }
     </style>
 </head>
 
@@ -85,6 +108,11 @@
             I WANT CALVINNNNNI WANT CALVINNNNNI WANT CALVINNNNNI WANT CALVINNNNN</h2>
         <p>This website is showcasing the awesomeness of Goose. Stay tuned for updates on Goose's adventures and coolness!</p>
     </section>
+
+    <video controls>
+        <source src="fmvideo.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
 </body>
 
 </html>
