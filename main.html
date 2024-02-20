@@ -30,8 +30,12 @@
             height: auto;
         }
 
+        h1 {
+            animation: flash 2s infinite alternate;
+        }
+
         h2 {
-            animation: bounce 2s infinite alternate;
+            animation: bounce 2s infinite alternate, flashColors 3s infinite;
         }
 
         @keyframes bounce {
@@ -40,6 +44,30 @@
             }
             100% {
                 transform: translateY(-20px);
+            }
+        }
+
+        @keyframes flashColors {
+            0%, 100% {
+                color: red;
+            }
+            25% {
+                color: blue;
+            }
+            50% {
+                color: green;
+            }
+            75% {
+                color: orange;
+            }
+        }
+
+        @keyframes flash {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
             }
         }
     </style>
