@@ -10,6 +10,11 @@ h1 {
     color: #333;
 }
 
+span[title] {
+    color: #333;
+    font-size: 26px;
+}
+
 p {
     display: inline-block;
     color: #595959;
