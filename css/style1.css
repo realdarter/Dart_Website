@@ -1,3 +1,4 @@
+/* Updated CSS */
 body {
     font-family: Arial, sans-serif;
     background-color: #f4f4f4;
@@ -42,4 +43,14 @@ img {
     padding: 10px;
     border-radius: 5px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Custom Emoji Styles */
+div {
+    margin: 10px;
+}
+
+div img {
+    width: 50px; /* Adjust the width as needed */
+    height: 50px; /* Adjust the height as needed */
 }
