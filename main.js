@@ -1,12 +1,10 @@
 var isButtonClicked = false;
 
-function myFunction() {
+function myFunction() { //debounce isbuttonclicked doesnt work find fix for tigs
     if (isButtonClicked) {
         return;
     }
     // script.js
-    console.log("Hello, this message will be printed to the terminal.");
-
     isButtonClicked = true;
     var textElement = document.getElementById("myText");
     
