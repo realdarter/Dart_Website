@@ -1,4 +1,4 @@
-# Dartiros.cc
+# dartiros.cc
 
 Welcome to the repository for dartiros.cc, a small frontend project showcasing HTML and CSS skills. This project serves as a simple website that you can use to understand the basics of frontend web development.
 
