@@ -8,11 +8,14 @@
     <style>
         .pdf-page-container {
             position: relative;
-            margin: 20px auto;
+            margin: 20px auto; /* Base margin */
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
             border-radius: 12px;
             border: 1px solid #e5e7eb;
-            transition: transform 0.1s ease-out;
+            /* Changed origin to top center to expand downwards */
+            transform-origin: top center;
+            /* Added margin-bottom to transition for smooth spacing */
+            transition: transform 0.1s ease-out, margin-bottom 0.1s ease-out;
             display: inline-block;
         }
         .pdf-viewer-canvas {
@@ -450,10 +453,46 @@ function showTemporaryMessage(m){
 }
 
 pdfViewer.addEventListener('wheel',e=>{
-    if(e.ctrlKey||e.metaKey){
+    if(e.ctrlKey || e.metaKey){
         e.preventDefault();
-        currentZoom=Math.max(0.5,Math.min(3,currentZoom*(e.deltaY>0?0.9:1.1)));
-        document.querySelectorAll('.pdf-page-container').forEach(c=>c.style.transform=`scale(${currentZoom})`);
+        
+        // Get mouse position relative to viewer
+        const rect = pdfViewer.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        
+        // Calculate zoom
+        const delta = e.deltaY > 0 ? 0.9 : 1.1;
+        const newZoom = Math.max(0.5, Math.min(3, currentZoom * delta));
+        
+        // Calculate zoom point adjustment
+        const zoomRatio = newZoom / currentZoom;
+        
+        // Adjust pan to zoom towards mouse cursor
+        panOffsetX = mouseX - (mouseX - panOffsetX) * zoomRatio;
+        panOffsetY = mouseY - (mouseY - panOffsetY) * zoomRatio;
+        
+        currentZoom = newZoom;
+        
+        // Apply transforms to viewer for panning
+        pdfViewer.style.transform = `translate(${panOffsetX}px, ${panOffsetY}px)`;
+        
+        // Apply scale to individual pages and FIX OVERLAP
+        document.querySelectorAll('.pdf-page-container').forEach(c => {
+            c.style.transform = `scale(${currentZoom})`;
+            
+            // Calculate and apply margin compensation for the scale
+            // When an element scales up, it flows in its original size.
+            // We must add margin-bottom to push the next element down.
+            const originalHeight = parseInt(c.style.height, 10);
+            if(originalHeight) {
+                // Formula: original height * (zoom - 1) gives the extra visual height
+                // Add base margin (20px) to that
+                const extraMargin = originalHeight * (currentZoom - 1);
+                c.style.marginBottom = `${20 + extraMargin}px`;
+            }
+        });
+        
         showTemporaryMessage(`Zoom: ${Math.round(currentZoom*100)}%`);
     }
 },{passive:false});
