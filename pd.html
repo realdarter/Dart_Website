@@ -541,6 +541,15 @@ document.addEventListener('keydown',e=>{
         redo();
     }
 });
+
+// Warn before closing/refreshing if there are unsaved changes
+window.addEventListener('beforeunload', e=>{
+    if(hasUnsavedChanges){
+        e.preventDefault();
+        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+        return e.returnValue;
+    }
+});
 btnLoadPdf.addEventListener('click',()=>{
     if(hasUnsavedChanges&&pdfDoc){
         const confirmed=confirm('This file has unsaved changes. Are you sure you want to replace it? All annotations will be lost.');
