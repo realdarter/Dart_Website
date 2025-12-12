@@ -1,704 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional PDF Annotator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .pdf-page-container {
+            position: relative;
+            margin: 20px auto;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+            transition: transform 0.1s ease-out;
+            display: inline-block;
+        }
+        .pdf-viewer-canvas {
+            display: block;
+            background-color: white;
+            position: relative;
+            z-index: 1;
+        }
+        .canvas-container {
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            z-index: 10 !important;
+        }
+        .lower-canvas {
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            z-index: 1 !important;
+        }
+        .upper-canvas {
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            z-index: 2 !important;
+            cursor: crosshair !important;
+        }
+        .active-tool {
+            background-color: #4f46e5 !important;
+            color: #ffffff !important;
+            box-shadow: 0 4px 10px rgba(79, 70, 229, 0.6);
+        }
+        .tool-btn {
+            transition: all 0.15s ease-in-out;
+            background-color: #e2e8f0;
+            color: #1e293b;
+            font-weight: 600;
+            padding: 0.6rem 1rem;
+        }
+        #fileInput { display: none; }
+        .tool-control-group {
+            display: flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 8px;
+            background-color: #fff;
+            border: 1px solid #d1d5db;
+            margin-right: 8px;
+        }
+        #pdfViewer { transition: transform 0.1s ease-out; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+<header class="bg-white shadow-xl sticky top-0 z-20 border-b border-gray-200">
+    <div class="max-w-full mx-auto py-3 px-4 flex flex-wrap items-center justify-between">
+        <h1 class="text-2xl font-extrabold text-gray-900"><span class="text-indigo-600">Draft</span>Annotator</h1>
+        <div class="flex flex-wrap items-center space-x-3 mt-2 sm:mt-0">
+            <button id="btnLoadPdf" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-5 rounded-xl">Load PDF</button>
+            <button id="btnSavePdf" class="bg-emerald-500 hover:bg-emerald-700 text-white font-bold py-2 px-5 rounded-xl disabled:opacity-50" disabled>Save PDF</button>
+            <div class="border-l border-gray-300 h-8"></div>
+            <button id="toolDraw" data-tool="draw" class="tool-btn rounded-xl hover:bg-slate-300">Draw <span class="text-xs opacity-70">(1)</span></button>
+            <button id="toolArrow" data-tool="arrow" class="tool-btn rounded-xl hover:bg-slate-300">Arrow <span class="text-xs opacity-70">(2)</span></button>
+            <button id="toolText" data-tool="text" class="tool-btn rounded-xl hover:bg-slate-300">Text <span class="text-xs opacity-70">(3)</span></button>
+            <button id="toolSelect" data-tool="select" class="tool-btn rounded-xl hover:bg-slate-300 active-tool">Select <span class="text-xs opacity-70">(4)</span></button>
+            <div class="border-l border-gray-300 h-8"></div>
+            <div class="tool-control-group">
+                <label for="fontSizeInput">Size:</label>
+                <input type="number" id="fontSizeInput" value="24" min="8" max="72" class="w-14 text-sm rounded-lg">
+            </div>
+            <div class="tool-control-group">
+                <label for="fontFamilySelect">Font:</label>
+                <select id="fontFamilySelect" class="text-sm rounded-lg">
+                    <option value="sans-serif">Sans-Serif</option>
+                    <option value="serif">Serif</option>
+                    <option value="monospace">Monospace</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</header>
+
+<div class="flex">
+<!-- Sidebar -->
+<aside class="w-72 bg-white shadow-xl border-r border-gray-200 overflow-y-auto h-screen sticky top-0">
+    <div class="p-5">
+        <h2 class="text-xl font-bold text-gray-900 mb-4">📋 Quick Reference</h2>
+        
+        <div class="space-y-4">
+            <!-- Assembly ID -->
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <h3 class="font-bold text-gray-900 mb-2">Assembly ID</h3>
+                <p class="font-mono text-indigo-700 font-bold mb-2">WL-2008</p>
+                <ul class="space-y-1 text-gray-700 text-sm">
+                    <li>2 = Floor elevation</li>
+                    <li>0 = Exterior (1=Interior)</li>
+                    <li>08 = Wall number</li>
+                </ul>
+            </div>
+
+            <!-- Wall Specs -->
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <h3 class="font-bold text-gray-900 mb-2">Wall Specs</h3>
+                <ul class="space-y-1 text-gray-700 text-sm">
+                    <li>Max length: 25'</li>
+                    <li>Ceiling: 9' or 10'</li>
+                    <li>Wall height: 10'-8"</li>
+                </ul>
+            </div>
+
+            <!-- Electrical -->
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <h3 class="font-bold text-gray-900 mb-2">⚡ Outlets (AFF)</h3>
+                <ul class="space-y-1 text-gray-700 text-sm">
+                    <li>Wall: 18½" (1'-6½")</li>
+                    <li>Countertop: 44" (3'-8")</li>
+                    <li>TV: 60" (5'-0")</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</aside>
+
+<!-- Main Content -->
+<div class="flex-1">
+
+<input type="file" id="fileInput" accept="application/pdf">
+
+<main class="max-w-full mx-auto p-4">
+    <div id="pdfViewer" class="flex flex-col items-center">
+        <div id="loadingMessage" class="text-center text-gray-600 p-12 bg-white rounded-xl shadow-md mt-10" style="display:none;">
+            <div class="animate-spin rounded-full h-10 w-10 border-t-4 border-b-4 border-indigo-600 mx-auto mb-4"></div>
+            <p class="text-lg font-semibold">Loading PDF...</p>
+        </div>
+        <p id="initialMessage" class="text-center text-gray-600 p-10 text-xl bg-white rounded-2xl shadow-xl mt-16">
+            🚀 <b>DraftAnnotator</b><br>
+            <span class="text-base">Load PDF • Draw in RED • Shift+Scroll zoom • Right-click pan</span><br>
+            <span class="text-sm mt-2 block text-gray-500">Shortcuts: 1=Draw, 2=Arrow, 3=Text, 4=Select</span>
+        </p>
+    </div>
+</main>
+
+<div id="tempMessageBox" class="fixed bottom-5 right-5 bg-indigo-600 text-white p-4 rounded-lg shadow-2xl transition-opacity duration-300 opacity-0" style="pointer-events:none;min-width:200px;text-align:center;"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+<script>pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
 <script>
-(() => {
-    const { jsPDF } = window.jspdf;
-
-    // ==== CONFIG ====
-    const HISTORY_LIMIT = 50;
-    const ZOOM_MIN = 0.5;
-    const ZOOM_MAX = 3;
-
-    // ==== STATE ====
-    let pdfDoc = null;
-    let numPages = 0;
-
-    let activeTool = 'select';
-    let currentFontSize = 24;
-    let currentFontFamily = 'sans-serif';
-
-    let isPanning = false;
-    let panStartX = 0;
-    let panStartY = 0;
-    let panOffsetX = 0;
-    let panOffsetY = 0;
-    let currentZoom = 1;
-
-    let hasUnsavedChanges = false;
-
-    let arrowLine = null;
-    let arrowStart = null;
-    let isArrowDrawing = false;
-    let activeCanvas = null;
-
-    const fabricCanvases = new Map(); // pageNum -> fabric.Canvas
-
-    // ==== DOM CACHE ====
-    const pdfViewer = document.getElementById('pdfViewer');
-    const fileInput = document.getElementById('fileInput');
-    const btnLoadPdf = document.getElementById('btnLoadPdf');
-    const btnSavePdf = document.getElementById('btnSavePdf');
-    const fontSizeInput = document.getElementById('fontSizeInput');
-    const fontFamilySelect = document.getElementById('fontFamilySelect');
-    const tempMessageBox = document.getElementById('tempMessageBox');
-    const initialMessage = document.getElementById('initialMessage');
-    const loadingMessage = document.getElementById('loadingMessage');
-
-    // ==== HISTORY HELPERS ====
-    function ensureCanvasHistory(canvas) {
-        if (!canvas.history) {
-            canvas.history = [];
-            canvas.historyPointer = -1;
-        }
-    }
-
-    function saveCanvasState(canvas) {
-        ensureCanvasHistory(canvas);
-
-        // If we've undone some steps, drop everything after the pointer
-        if (canvas.historyPointer < canvas.history.length - 1) {
-            canvas.history = canvas.history.slice(0, canvas.historyPointer + 1);
-        }
-
-        canvas.history.push(
-            JSON.stringify(canvas.toJSON(['annotationType', 'selectable', 'evented']))
-        );
-        canvas.historyPointer = canvas.history.length - 1;
-
-        // Trim history
-        if (canvas.history.length > HISTORY_LIMIT) {
-            canvas.history.shift();
-            canvas.historyPointer--;
-        }
-
-        if (canvas.historyPointer > 0) {
-            hasUnsavedChanges = true;
-        }
-    }
-
-    function restoreCanvasFromHistory(canvas) {
-        if (!canvas.history || canvas.historyPointer < 0) return;
-
-        const json = canvas.history[canvas.historyPointer];
-        canvas.loadFromJSON(
-            json,
-            () => {
-                canvas.renderAll();
-                canvas.forEachObject(obj => {
-                    obj.selectable = activeTool === 'select';
-                    obj.evented = activeTool === 'select';
-                });
-            },
-            (o, obj) => {
-                if (o.annotationType) {
-                    obj.annotationType = o.annotationType;
-                }
-            }
-        );
-    }
-
-    function undo() {
-        for (const canvas of fabricCanvases.values()) {
-            if (canvas.history && canvas.historyPointer > 0) {
-                canvas.historyPointer--;
-                restoreCanvasFromHistory(canvas);
-                showTemporaryMessage('Undo');
-                return;
-            }
-        }
-        showTemporaryMessage('Nothing to undo');
-    }
-
-    function redo() {
-        for (const canvas of fabricCanvases.values()) {
-            if (canvas.history && canvas.historyPointer < canvas.history.length - 1) {
-                canvas.historyPointer++;
-                restoreCanvasFromHistory(canvas);
-                showTemporaryMessage('Redo');
-                return;
-            }
-        }
-        showTemporaryMessage('Nothing to redo');
-    }
-
-    // ==== UI HELPERS ====
-    function showTemporaryMessage(message) {
-        if (!tempMessageBox) return;
-        tempMessageBox.textContent = message;
-        tempMessageBox.style.opacity = '1';
-
-        if (tempMessageBox._timer) clearTimeout(tempMessageBox._timer);
-        tempMessageBox._timer = setTimeout(() => {
-            tempMessageBox.style.opacity = '0';
-        }, 3000);
-    }
-
-    function setActiveTool(tool) {
-        activeTool = tool;
-
-        document.querySelectorAll('.tool-btn').forEach(btn => {
-            btn.classList.toggle('active-tool', btn.dataset.tool === tool);
-        });
-
-        const isTextTool = tool === 'text' || tool === 'select';
-        fontSizeInput.disabled = !isTextTool;
-        fontFamilySelect.disabled = !isTextTool;
-
-        fabricCanvases.forEach(canvas => {
-            canvas.selection = tool === 'select';
-            canvas.isDrawingMode = tool === 'draw';
-
-            if (tool === 'draw') {
-                canvas.defaultCursor = 'crosshair';
-            } else if (tool === 'text') {
-                canvas.defaultCursor = 'text';
-            } else if (tool === 'arrow') {
-                canvas.defaultCursor = 'crosshair';
-            } else {
-                canvas.defaultCursor = 'default';
-            }
-
-            canvas.forEachObject(obj => {
-                obj.selectable = tool === 'select';
-                obj.evented = tool === 'select';
-            });
-
-            canvas.renderAll();
-        });
-    }
-
-    function updateSelectedObjectProperties() {
-        fabricCanvases.forEach(canvas => {
-            const activeObj = canvas.getActiveObject();
-            if (activeObj && activeObj.type === 'i-text') {
-                activeObj.set({
-                    fontSize: currentFontSize,
-                    fontFamily: currentFontFamily
-                });
-                canvas.renderAll();
-                saveCanvasState(canvas);
-            }
-        });
-    }
-
-    // ==== ARROW HANDLERS ====
-    function handleArrowStart(canvas, opt) {
-        if (activeTool !== 'arrow') return;
-        if (opt.target) return;
-
-        isArrowDrawing = true;
-        activeCanvas = canvas;
-
-        const pointer = canvas.getPointer(opt.e);
-        arrowStart = { x: pointer.x, y: pointer.y };
-
-        arrowLine = new fabric.Line(
-            [pointer.x, pointer.y, pointer.x, pointer.y],
-            {
-                strokeWidth: 3,
-                fill: 'red',
-                stroke: 'red',
-                originX: 'center',
-                originY: 'center',
-                selectable: false,
-                evented: false
-            }
-        );
-
-        canvas.add(arrowLine);
-    }
-
-    function handleArrowMove(opt) {
-        if (!isArrowDrawing || !activeCanvas || !arrowLine) return;
-        const pointer = activeCanvas.getPointer(opt.e);
-        arrowLine.set({ x2: pointer.x, y2: pointer.y });
-        activeCanvas.renderAll();
-    }
-
-    function handleArrowEnd() {
-        if (!isArrowDrawing || !activeCanvas || !arrowLine) return;
-
-        isArrowDrawing = false;
-
-        const { x1, y1, x2, y2 } = arrowLine;
-        const angle = Math.atan2(y2 - y1, x2 - x1);
-
-        const arrowHead = new fabric.Triangle({
-            left: x2,
-            top: y2,
-            originX: 'center',
-            originY: 'center',
-            width: 15,
-            height: 15,
-            fill: 'red',
-            stroke: 'red',
-            angle: (angle * 180 / Math.PI) + 90,
-            selectable: false,
-            evented: false
-        });
-
-        activeCanvas.add(arrowHead);
-
-        const group = new fabric.Group(
-            [arrowLine, arrowHead],
-            {
-                selectable: true,
-                evented: true,
-                hasControls: true,
-                hasBorders: true
-            }
-        );
-
-        activeCanvas.remove(arrowLine);
-        activeCanvas.remove(arrowHead);
-        activeCanvas.add(group);
-
-        activeCanvas.renderAll();
-        saveCanvasState(activeCanvas);
-
-        arrowLine = null;
-        arrowStart = null;
-        activeCanvas = null;
-    }
-
-    // ==== TEXT HANDLER ====
-    function handleTextPlacement(canvas, opt) {
-        if (activeTool !== 'text' || opt.target) return;
-
-        const pointer = canvas.getPointer(opt.e);
-        const text = new fabric.IText('', {
-            left: pointer.x,
-            top: pointer.y,
-            fontFamily: currentFontFamily,
-            fontSize: currentFontSize,
-            fill: 'red',
-            selectable: true,
-            evented: true
-        });
-
-        canvas.add(text);
-        canvas.setActiveObject(text);
-        text.enterEditing();
-        saveCanvasState(canvas);
-    }
-
-    // ==== PAGE RENDERING ====
-    async function renderPage(pageNum) {
-        try {
-            const page = await pdfDoc.getPage(pageNum);
-            const viewport = page.getViewport({ scale: 1 });
-
-            const maxWidth = Math.min(window.innerWidth - 100, 1400);
-            const scale = maxWidth / viewport.width;
-            const scaledViewport = page.getViewport({ scale });
-
-            const container = document.createElement('div');
-            container.className = 'pdf-page-container';
-            container.style.width = `${scaledViewport.width}px`;
-            container.style.height = `${scaledViewport.height}px`;
-            container.dataset.pageNum = pageNum;
-
-            const pdfCanvas = document.createElement('canvas');
-            pdfCanvas.className = 'pdf-viewer-canvas';
-            pdfCanvas.width = scaledViewport.width;
-            pdfCanvas.height = scaledViewport.height;
-            pdfCanvas.style.width = `${scaledViewport.width}px`;
-            pdfCanvas.style.height = `${scaledViewport.height}px`;
-
-            container.appendChild(pdfCanvas);
-            pdfViewer.appendChild(container);
-
-            const ctx = pdfCanvas.getContext('2d');
-            await page.render({ canvasContext: ctx, viewport: scaledViewport }).promise;
-
-            const fabricCanvasEl = document.createElement('canvas');
-            fabricCanvasEl.id = `fabric-canvas-${pageNum}`;
-            fabricCanvasEl.style.position = 'absolute';
-            fabricCanvasEl.style.top = '0';
-            fabricCanvasEl.style.left = '0';
-            container.appendChild(fabricCanvasEl);
-
-            const fabricCanvas = new fabric.Canvas(fabricCanvasEl, {
-                selection: true,
-                isDrawingMode: false,
-                width: scaledViewport.width,
-                height: scaledViewport.height
-            });
-
-            // Draw brush setup
-            fabricCanvas.freeDrawingBrush = new fabric.PencilBrush(fabricCanvas);
-            fabricCanvas.freeDrawingBrush.color = 'red';
-            fabricCanvas.freeDrawingBrush.width = 3;
-
-            // Initialize history
-            saveCanvasState(fabricCanvas);
-
-            // Fabric events
-            fabricCanvas.on('object:modified', () => saveCanvasState(fabricCanvas));
-            fabricCanvas.on('object:removed', () => saveCanvasState(fabricCanvas));
-
-            fabricCanvas.on('object:added', e => {
-                // For free drawing, we capture state here; for text/arrow,
-                // state is saved where they are created.
-                if (activeTool === 'draw') {
-                    saveCanvasState(fabricCanvas);
-                }
-            });
-
-            fabricCanvas.on('path:created', e => {
-                if (e.path) {
-                    e.path.set({
-                        selectable: true,
-                        evented: true,
-                        hasControls: true,
-                        hasBorders: true
-                    });
-                }
-                saveCanvasState(fabricCanvas);
-            });
-
-            fabricCanvas.on('mouse:down', opt => {
-                const evt = opt.e;
-                // Right-click: start panning
-                if (evt.button === 2) {
-                    isPanning = true;
-                    panStartX = evt.clientX - panOffsetX;
-                    panStartY = evt.clientY - panOffsetY;
-                    fabricCanvas.defaultCursor = 'grabbing';
-                } else {
-                    if (activeTool === 'text') {
-                        handleTextPlacement(fabricCanvas, opt);
-                    } else if (activeTool === 'arrow') {
-                        handleArrowStart(fabricCanvas, opt);
-                    }
-                }
-            });
-
-            fabricCanvas.on('mouse:move', opt => {
-                if (isPanning) {
-                    const evt = opt.e;
-                    panOffsetX = evt.clientX - panStartX;
-                    panOffsetY = evt.clientY - panStartY;
-                    pdfViewer.style.transform = `translate(${panOffsetX}px, ${panOffsetY}px)`;
-                } else {
-                    handleArrowMove(opt);
-                }
-            });
-
-            fabricCanvas.on('mouse:up', () => {
-                if (isPanning) {
-                    isPanning = false;
-                    fabricCanvas.defaultCursor = activeTool === 'draw' ? 'crosshair' :
-                        activeTool === 'text' ? 'text' :
-                        activeTool === 'arrow' ? 'crosshair' : 'default';
-                } else {
-                    handleArrowEnd();
-                }
-            });
-
-            // Prevent context menu on right-click (for panning)
-            container.addEventListener('contextmenu', e => e.preventDefault());
-
-            // Delete / backspace handler for this canvas
-            const deleteHandler = e => {
-                if (e.key !== 'Delete' && e.key !== 'Backspace') return;
-
-                const activeObj = fabricCanvas.getActiveObject();
-                if (!activeObj) return;
-
-                // Allow deleting grouped selection, but don't delete inside editing text
-                if (activeObj.type === 'i-text' && activeObj.isEditing) return;
-
-                if (activeObj.type === 'activeSelection') {
-                    activeObj.forEachObject(obj => fabricCanvas.remove(obj));
-                    fabricCanvas.discardActiveObject();
-                } else {
-                    fabricCanvas.remove(activeObj);
-                }
-
-                saveCanvasState(fabricCanvas);
-                fabricCanvas.renderAll();
-                e.preventDefault();
-            };
-
-            fabricCanvas._deleteHandler = deleteHandler;
-            document.addEventListener('keydown', deleteHandler);
-
-            fabricCanvases.set(pageNum, fabricCanvas);
-            setActiveTool(activeTool); // Apply current tool to new canvas
-        } catch (err) {
-            console.error(`Error rendering page ${pageNum}:`, err);
-        }
-    }
-
-    async function renderAllPages() {
-        if (!pdfDoc) return;
-
-        // Clear viewer
-        pdfViewer.innerHTML = '';
-
-        // Clean up old canvases and handlers
-        fabricCanvases.forEach(canvas => {
-            if (canvas._deleteHandler) {
-                document.removeEventListener('keydown', canvas._deleteHandler);
-            }
-            try {
-                canvas.dispose();
-            } catch (e) {
-                console.warn('Canvas dispose error:', e);
-            }
-        });
-        fabricCanvases.clear();
-
-        // Reset zoom / pan
-        currentZoom = 1;
-        panOffsetX = 0;
-        panOffsetY = 0;
-        pdfViewer.style.transform = 'translate(0,0)';
-
-        for (let i = 1; i <= numPages; i++) {
-            await renderPage(i);
-        }
-    }
-
-    // ==== PDF LOAD / SAVE ====
-    async function loadPDF(file) {
-        if (initialMessage) initialMessage.style.display = 'none';
-        if (loadingMessage) loadingMessage.style.display = 'block';
-
-        btnSavePdf.disabled = true;
-
-        try {
-            if (pdfDoc) {
-                pdfDoc.destroy();
-                pdfDoc = null;
-            }
-
-            const arrayBuffer = await file.arrayBuffer();
-            pdfDoc = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
-            numPages = pdfDoc.numPages;
-
-            await renderAllPages();
-
-            btnSavePdf.disabled = false;
-            hasUnsavedChanges = false;
-            showTemporaryMessage(`PDF loaded: ${numPages} page(s)`);
-        } catch (e) {
-            console.error('Load error:', e);
-            pdfViewer.innerHTML = `<div class="text-red-600 p-8">Error: ${e.message}</div>`;
-        } finally {
-            if (loadingMessage) loadingMessage.style.display = 'none';
-            fileInput.value = '';
-        }
-    }
-
-    async function saveAllPagesAsPDF() {
-        if (!numPages || !fabricCanvases.size) {
-            showTemporaryMessage('Load PDF first');
+const {jsPDF}=window.jspdf;
+let pdfDoc=null,numPages=0,scale=1.5,activeTool='select',currentFontSize=24,currentFontFamily='sans-serif';
+let isPanning=false,panStartX=0,panStartY=0,panOffsetX=0,panOffsetY=0,currentZoom=1;
+let hasUnsavedChanges=false;
+const pdfViewer=document.getElementById('pdfViewer'),fileInput=document.getElementById('fileInput');
+const btnLoadPdf=document.getElementById('btnLoadPdf'),btnSavePdf=document.getElementById('btnSavePdf');
+const fontSizeInput=document.getElementById('fontSizeInput'),fontFamilySelect=document.getElementById('fontFamilySelect');
+const fabricCanvases=new Map();
+
+function saveCanvasState(c){
+    if(!c.history){c.history=[];c.historyPointer=-1;}
+    if(c.historyPointer<c.history.length-1)c.history=c.history.slice(0,c.historyPointer+1);
+    c.history.push(JSON.stringify(c.toJSON(['annotationType','selectable','evented'])));
+    c.historyPointer=c.history.length-1;
+    if(c.history.length>50){c.history.shift();c.historyPointer--;}
+    if(c.historyPointer>0)hasUnsavedChanges=true;
+}
+
+function undo(){
+    const activeCanvases = Array.from(fabricCanvases.values());
+    for(const c of activeCanvases){
+        if(c.history && c.historyPointer > 0){
+            c.historyPointer--;
+            c.loadFromJSON(c.history[c.historyPointer],()=>{
+                c.renderAll();
+                c.forEachObject(o=>{o.selectable=activeTool==='select';o.evented=activeTool==='select';});
+            },(o,obj)=>{if(o.annotationType)obj.annotationType=o.annotationType;});
+            showTemporaryMessage("Undo");
             return;
         }
+    }
+    showTemporaryMessage("Nothing to undo");
+}
 
-        btnSavePdf.disabled = true;
-        btnSavePdf.textContent = 'Generating...';
-
-        try {
-            const containers = Array.from(
-                document.querySelectorAll('.pdf-page-container')
-            ).sort((a, b) => parseInt(a.dataset.pageNum, 10) - parseInt(b.dataset.pageNum, 10));
-
-            const firstPage = await pdfDoc.getPage(1);
-            const baseViewport = firstPage.getViewport({ scale: 1 });
-
-            const baseWidthMm = baseViewport.width * 0.352778;
-            const baseHeightMm = baseViewport.height * 0.352778;
-
-            const doc = new jsPDF({
-                orientation: baseWidthMm > baseHeightMm ? 'l' : 'p',
-                unit: 'mm',
-                format: [baseWidthMm, baseHeightMm]
-            });
-
-            let isFirst = true;
-
-            for (const container of containers) {
-                const pageNum = parseInt(container.dataset.pageNum, 10);
-                const fabricCanvas = fabricCanvases.get(pageNum);
-                const pdfCanvas = container.querySelector('.pdf-viewer-canvas');
-
-                if (!fabricCanvas || !pdfCanvas) continue;
-
-                const page = await pdfDoc.getPage(pageNum);
-                const vp = page.getViewport({ scale: 1 });
-                const pageWidthMm = vp.width * 0.352778;
-                const pageHeightMm = vp.height * 0.352778;
-
-                const mergedCanvas = document.createElement('canvas');
-                mergedCanvas.width = pdfCanvas.width;
-                mergedCanvas.height = pdfCanvas.height;
-
-                const mergedCtx = mergedCanvas.getContext('2d');
-                mergedCtx.drawImage(pdfCanvas, 0, 0);
-
-                const fabricDataUrl = fabricCanvas.toDataURL({ format: 'png', multiplier: 1 });
-                const fabricImage = await new Promise(resolve => {
-                    const img = new Image();
-                    img.onload = () => resolve(img);
-                    img.src = fabricDataUrl;
-                });
-
-                mergedCtx.drawImage(fabricImage, 0, 0);
-
-                const finalDataUrl = mergedCanvas.toDataURL('image/jpeg', 0.95);
-
-                if (!isFirst) {
-                    doc.addPage(
-                        [pageWidthMm, pageHeightMm],
-                        pageWidthMm > pageHeightMm ? 'l' : 'p'
-                    );
-                }
-
-                doc.addImage(finalDataUrl, 'JPEG', 0, 0, pageWidthMm, pageHeightMm);
-                isFirst = false;
-            }
-
-            doc.save('annotated_document.pdf');
-            showTemporaryMessage('PDF saved!');
-            hasUnsavedChanges = false;
-        } catch (err) {
-            console.error('Save error:', err);
-            showTemporaryMessage(`Error: ${err.message}`);
-        } finally {
-            btnSavePdf.disabled = false;
-            btnSavePdf.textContent = 'Save PDF';
+function redo(){
+    const activeCanvases = Array.from(fabricCanvases.values());
+    for(const c of activeCanvases){
+        if(c.history && c.historyPointer < c.history.length - 1){
+            c.historyPointer++;
+            c.loadFromJSON(c.history[c.historyPointer],()=>{
+                c.renderAll();
+                c.forEachObject(o=>{o.selectable=activeTool==='select';o.evented=activeTool==='select';});
+            },(o,obj)=>{if(o.annotationType)obj.annotationType=o.annotationType;});
+            showTemporaryMessage("Redo");
+            return;
         }
     }
+    showTemporaryMessage("Nothing to redo");
+}
 
-    // ==== GLOBAL EVENTS ====
-    pdfViewer.addEventListener(
-        'wheel',
-        e => {
-            if (!e.shiftKey) return;
+function setActiveTool(t){
+    activeTool=t;
+    document.querySelectorAll('.tool-btn').forEach(b=>b.classList.toggle('active-tool',b.dataset.tool===t));
+    fabricCanvases.forEach(c=>{
+        c.selection=t==='select';c.isDrawingMode=t==='draw';
+        c.defaultCursor=t==='draw'?'crosshair':t==='text'?'text':t==='arrow'?'crosshair':'default';
+        c.forEachObject(o=>{o.selectable=t==='select';o.evented=t==='select';});
+        c.renderAll();
+    });
+    const isTxt=t==='text'||t==='select';
+    fontSizeInput.disabled=!isTxt;fontFamilySelect.disabled=!isTxt;
+}
 
-            e.preventDefault();
+let arrowLine=null,arrowStart=null,isArrowDrawing=false,activeCanvas=null;
 
-            const rect = pdfViewer.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const mouseY = e.clientY - rect.top;
+function handleArrowStart(c,o){
+    if(activeTool!=='arrow')return;
+    isArrowDrawing=true;activeCanvas=c;
+    const p=c.getPointer(o.e);arrowStart={x:p.x,y:p.y};
+    arrowLine=new fabric.Line([p.x,p.y,p.x,p.y],{strokeWidth:3,fill:'red',stroke:'red',originX:'center',originY:'center',selectable:false,evented:false});
+    c.add(arrowLine);
+}
 
-            const delta = e.deltaY > 0 ? 0.9 : 1.1;
-            const newZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, currentZoom * delta));
-            const zoomRatio = newZoom / currentZoom;
+function handleArrowMove(o){
+    if(!isArrowDrawing||!activeCanvas||!arrowLine)return;
+    const p=activeCanvas.getPointer(o.e);
+    arrowLine.set({x2:p.x,y2:p.y});activeCanvas.renderAll();
+}
 
-            panOffsetX = mouseX - (mouseX - panOffsetX) * zoomRatio;
-            panOffsetY = mouseY - (mouseY - panOffsetY) * zoomRatio;
+function handleArrowEnd(){
+    if(!isArrowDrawing||!activeCanvas||!arrowLine)return;
+    isArrowDrawing=false;
+    const x1=arrowLine.x1,y1=arrowLine.y1,x2=arrowLine.x2,y2=arrowLine.y2;
+    const angle=Math.atan2(y2-y1,x2-x1),head=new fabric.Triangle({
+        left:x2,top:y2,originX:'center',originY:'center',width:15,height:15,
+        fill:'red',stroke:'red',angle:(angle*180/Math.PI)+90,selectable:false,evented:false
+    });
+    activeCanvas.add(head);
+    const grp=new fabric.Group([arrowLine,head],{selectable:true,evented:true,hasControls:true,hasBorders:true});
+    activeCanvas.remove(arrowLine);activeCanvas.remove(head);activeCanvas.add(grp);
+    activeCanvas.renderAll();saveCanvasState(activeCanvas);
+    arrowLine=null;arrowStart=null;activeCanvas=null;
+}
 
-            currentZoom = newZoom;
+function handleTextPlacement(c,o){
+    if(activeTool!=='text'||o.target)return;
+    const p=c.getPointer(o.e),txt=new fabric.IText('',{
+        left:p.x,top:p.y,fontFamily:currentFontFamily,fontSize:currentFontSize,fill:'red',selectable:true,evented:true
+    });
+    c.add(txt);c.setActiveObject(txt);txt.enterEditing();saveCanvasState(c);
+}
 
-            pdfViewer.style.transform = `translate(${panOffsetX}px, ${panOffsetY}px)`;
-            document
-                .querySelectorAll('.pdf-page-container')
-                .forEach(c => (c.style.transform = `scale(${currentZoom})`));
+function updateSelectedObjectProperties(){
+    fabricCanvases.forEach(c=>{
+        const a=c.getActiveObject();
+        if(a&&a.type==='i-text'){a.set({fontSize:currentFontSize,fontFamily:currentFontFamily});c.renderAll();saveCanvasState(c);}
+    });
+}
 
-            showTemporaryMessage(`Zoom: ${Math.round(currentZoom * 100)}%`);
-        },
-        { passive: false }
-    );
-
-    document.addEventListener('keydown', e => {
-        // Avoid shortcuts when typing in inputs / textareas / editing fabric text
-        const target = e.target;
-        const isTyping =
-            target.tagName === 'INPUT' ||
-            target.tagName === 'TEXTAREA' ||
-            target.isContentEditable;
-
-        let isEditingCanvasText = false;
-        fabricCanvases.forEach(canvas => {
-            const activeObj = canvas.getActiveObject();
-            if (activeObj && activeObj.type === 'i-text' && activeObj.isEditing) {
-                isEditingCanvasText = true;
+async function renderPage(n){
+    try{
+        const pg=await pdfDoc.getPage(n),vp=pg.getViewport({scale:1});
+        const w=Math.min(window.innerWidth-100,1400);
+        scale=w/vp.width;
+        const sv=pg.getViewport({scale});
+        
+        const cont=document.createElement('div');
+        cont.className='pdf-page-container';
+        cont.style.width=`${sv.width}px`;
+        cont.style.height=`${sv.height}px`;
+        cont.dataset.pageNum=n;
+        
+        const pdfC=document.createElement('canvas');
+        pdfC.className='pdf-viewer-canvas';
+        pdfC.width=sv.width;
+        pdfC.height=sv.height;
+        pdfC.style.width=`${sv.width}px`;
+        pdfC.style.height=`${sv.height}px`;
+        cont.appendChild(pdfC);
+        await pg.render({canvasContext:pdfC.getContext('2d'),viewport:sv}).promise;
+        
+        pdfViewer.appendChild(cont);
+        
+        const fabEl=document.createElement('canvas');
+        fabEl.id=`fabric-canvas-${n}`;
+        fabEl.style.position='absolute';
+        fabEl.style.top='0';
+        fabEl.style.left='0';
+        cont.appendChild(fabEl);
+        
+        const fc=new fabric.Canvas(fabEl,{
+            selection:true,
+            isDrawingMode:false,
+            width:sv.width,
+            height:sv.height
+        });
+        
+        fc.freeDrawingBrush=new fabric.PencilBrush(fc);
+        fc.freeDrawingBrush.color='red';
+        fc.freeDrawingBrush.width=3;
+        
+        saveCanvasState(fc);
+        fc.on('object:modified',()=>saveCanvasState(fc));
+        fc.on('object:removed',()=>saveCanvasState(fc));
+        fc.on('object:added',()=>{if(activeTool==='draw')saveCanvasState(fc);});
+        fc.on('path:created',e=>{if(e.path)e.path.set({selectable:true,evented:true,hasControls:true,hasBorders:true});saveCanvasState(fc);});
+        fc.on('mouse:down',o=>{
+            if(o.e.button===2){
+                isPanning=true;panStartX=o.e.clientX-panOffsetX;panStartY=o.e.clientY-panOffsetY;fc.defaultCursor='grabbing';
+            }else{
+                // Don't create new objects if clicking on existing object in arrow/text mode
+                if(activeTool==='text' && !o.target){
+                    handleTextPlacement(fc,o);
+                }else if(activeTool==='arrow' && !o.target){
+                    handleArrowStart(fc,o);
+                }
             }
         });
+        fc.on('mouse:move',o=>{
+            if(isPanning){panOffsetX=o.e.clientX-panStartX;panOffsetY=o.e.clientY-panStartY;pdfViewer.style.transform=`translate(${panOffsetX}px,${panOffsetY}px)`;}
+            else handleArrowMove(o);
+        });
+        fc.on('mouse:up',o=>{
+            if(isPanning){isPanning=false;fc.defaultCursor=activeTool==='draw'?'crosshair':'default';}
+            else handleArrowEnd();
+        });
+        
+        cont.addEventListener('contextmenu',e=>e.preventDefault());
+        
+        const delH=e=>{
+            if(e.key==='Delete'||e.key==='Backspace'){
+                const ao=fc.getActiveObject();
+                if(ao&&!(ao.type==='i-text'&&ao.isEditing)){
+                    if(ao.type==='activeSelection'){
+                        ao.forEachObject(obj=>fc.remove(obj));
+                        fc.discardActiveObject();
+                    }else{
+                        fc.remove(ao);
+                    }
+                    saveCanvasState(fc);
+                    fc.renderAll();
+                    e.preventDefault();
+                }
+            }
+        };
+        
+        fc._deleteHandler=delH;
+        document.addEventListener('keydown',delH);
+        fabricCanvases.set(n,fc);
+        setActiveTool(activeTool);
+    }catch(err){console.error(`Error page ${n}:`,err);}
+}
 
-        if (isTyping || isEditingCanvasText) return;
-
-        // Tools
-        if (e.key === '1') {
-            e.preventDefault();
-            setActiveTool('draw');
-        } else if (e.key === '2') {
-            e.preventDefault();
-            setActiveTool('arrow');
-        } else if (e.key === '3') {
-            e.preventDefault();
-            setActiveTool('text');
-        } else if (e.key === '4') {
-            e.preventDefault();
-            setActiveTool('select');
+async function renderAllPages(){
+    if(!pdfDoc)return;
+    
+    // Clear the viewer completely
+    pdfViewer.innerHTML='';
+    
+    // Clean up old event listeners and dispose canvases
+    fabricCanvases.forEach(c=>{
+        if(c._deleteHandler){
+            document.removeEventListener('keydown',c._deleteHandler);
         }
-        // Undo / Redo
-        else if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-            e.preventDefault();
-            undo();
-        } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
-            e.preventDefault();
-            redo();
+        try{
+            c.dispose();
+        }catch(e){
+            console.log('Canvas dispose error:',e);
         }
     });
+    
+    fabricCanvases.clear();
+    
+    // Reset zoom and pan
+    currentZoom=1;
+    panOffsetX=0;
+    panOffsetY=0;
+    pdfViewer.style.transform='translate(0,0)';
+    
+    // Render all pages
+    for(let i=1;i<=numPages;i++){
+        await renderPage(i);
+    }
+}
 
-    // Warn before closing with unsaved changes
-    window.addEventListener('beforeunload', e => {
-        if (!hasUnsavedChanges) return;
+async function loadPDF(f){
+    const initialMessage = document.getElementById('initialMessage');
+    const loadingMessage = document.getElementById('loadingMessage');
+    
+    if(initialMessage) initialMessage.style.display='none';
+    if(loadingMessage) loadingMessage.style.display='block';
+    
+    btnSavePdf.disabled=true;
+    
+    try{
+        // Clean up old PDF document
+        if(pdfDoc){
+            pdfDoc.destroy();
+            pdfDoc = null;
+        }
+        
+        const ab=await f.arrayBuffer();
+        pdfDoc=await pdfjsLib.getDocument({data:new Uint8Array(ab)}).promise;
+        numPages=pdfDoc.numPages;
+        
+        console.log('Loading new PDF with',numPages,'pages');
+        
+        await renderAllPages();
+        btnSavePdf.disabled=false;
+        hasUnsavedChanges=false;
+        
+        showTemporaryMessage(`PDF loaded: ${numPages} page(s)`);
+    }catch(e){
+        console.error('Load err:',e);
+        pdfViewer.innerHTML=`<div class="text-red-600 p-8">Error: ${e.message}</div>`;
+    }finally{
+        if(loadingMessage) loadingMessage.style.display='none';
+        fileInput.value='';
+    }
+}
+
+async function saveAllPagesAsPDF(){
+    if(!numPages||!fabricCanvases.size){showTemporaryMessage("Load PDF first");return;}
+    btnSavePdf.disabled=true;btnSavePdf.textContent='Generating...';
+    try{
+        const conts=Array.from(document.querySelectorAll('.pdf-page-container')).sort((a,b)=>parseInt(a.dataset.pageNum)-parseInt(b.dataset.pageNum));
+        const p1=await pdfDoc.getPage(1),v1=p1.getViewport({scale:1});
+        const wm=v1.width*0.352778,hm=v1.height*0.352778;
+        const doc=new jsPDF({orientation:wm>hm?'l':'p',unit:'mm',format:[wm,hm]});
+        let first=true;
+        for(const ct of conts){
+            const pn=parseInt(ct.dataset.pageNum,10),fc=fabricCanvases.get(pn),pc=ct.querySelector('.pdf-viewer-canvas');
+            if(!fc||!pc)continue;
+            const pg=await pdfDoc.getPage(pn),vp=pg.getViewport({scale:1});
+            const pwm=vp.width*0.352778,phm=vp.height*0.352778;
+            const mc=document.createElement('canvas');mc.width=pc.width;mc.height=pc.height;
+            const ctx=mc.getContext('2d');ctx.drawImage(pc,0,0);
+            const fdu=fc.toDataURL({format:'png',multiplier:1});
+            const fi=await new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.src=fdu;});
+            ctx.drawImage(fi,0,0);
+            const fd=mc.toDataURL('image/jpeg',0.95);
+            if(!first)doc.addPage([pwm,phm],pwm>phm?'l':'p');
+            doc.addImage(fd,'JPEG',0,0,pwm,phm);first=false;
+        }
+        doc.save('annotated_document.pdf');
+        showTemporaryMessage("PDF saved!");
+        hasUnsavedChanges=false;
+    }catch(err){console.error('Save err:',err);showTemporaryMessage(`Error: ${err.message}`);}
+    finally{btnSavePdf.disabled=false;btnSavePdf.textContent='Save PDF';}
+}
+
+function showTemporaryMessage(m){
+    const b=document.getElementById('tempMessageBox');if(!b)return;
+    b.textContent=m;b.style.opacity='1';
+    if(b._timer)clearTimeout(b._timer);
+    b._timer=setTimeout(()=>b.style.opacity='0',3000);
+}
+
+pdfViewer.addEventListener('wheel',e=>{
+    if(e.shiftKey){
+        e.preventDefault();
+        
+        // Get mouse position relative to viewer
+        const rect = pdfViewer.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        
+        // Calculate zoom
+        const delta = e.deltaY > 0 ? 0.9 : 1.1;
+        const newZoom = Math.max(0.5, Math.min(3, currentZoom * delta));
+        
+        // Calculate zoom point adjustment
+        const zoomRatio = newZoom / currentZoom;
+        
+        // Adjust pan to zoom towards mouse cursor
+        panOffsetX = mouseX - (mouseX - panOffsetX) * zoomRatio;
+        panOffsetY = mouseY - (mouseY - panOffsetY) * zoomRatio;
+        
+        currentZoom = newZoom;
+        
+        pdfViewer.style.transform = `translate(${panOffsetX}px, ${panOffsetY}px)`;
+        document.querySelectorAll('.pdf-page-container').forEach(c=>c.style.transform=`scale(${currentZoom})`);
+        showTemporaryMessage(`Zoom: ${Math.round(currentZoom*100)}%`);
+    }
+},{passive:false});
+
+document.addEventListener('keydown',e=>{
+    // Don't trigger shortcuts if user is typing in a text field
+    const isTyping = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable;
+    
+    // Check if editing text on canvas
+    let isEditingCanvas = false;
+    fabricCanvases.forEach(c=>{
+        const activeObj = c.getActiveObject();
+        if(activeObj && activeObj.type === 'i-text' && activeObj.isEditing){
+            isEditingCanvas = true;
+        }
+    });
+    
+    if(isTyping || isEditingCanvas) return;
+    
+    // Tool shortcuts
+    if(e.key==='1'){
+        e.preventDefault();
+        setActiveTool('draw');
+    }else if(e.key==='2'){
+        e.preventDefault();
+        setActiveTool('arrow');
+    }else if(e.key==='3'){
+        e.preventDefault();
+        setActiveTool('text');
+    }else if(e.key==='4'){
+        e.preventDefault();
+        setActiveTool('select');
+    }
+    // Undo/Redo
+    else if((e.ctrlKey||e.metaKey)&&e.key==='z' && !e.shiftKey){
+        e.preventDefault();
+        undo();
+    }else if((e.ctrlKey||e.metaKey)&&(e.key==='y'||(e.key==='z'&&e.shiftKey))){
+        e.preventDefault();
+        redo();
+    }
+});
+
+// Warn before closing/refreshing if there are unsaved changes
+window.addEventListener('beforeunload', e=>{
+    if(hasUnsavedChanges){
         e.preventDefault();
         e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
         return e.returnValue;
-    });
+    }
+});
+btnLoadPdf.addEventListener('click',()=>{
+    if(hasUnsavedChanges&&pdfDoc){
+        const confirmed=confirm('This file has unsaved changes. Are you sure you want to replace it? All annotations will be lost.');
+        if(!confirmed)return;
+    }
+    fileInput.click();
+});
 
-    // ==== BUTTONS / INPUTS ====
-    btnLoadPdf.addEventListener('click', () => {
-        if (hasUnsavedChanges && pdfDoc) {
-            const confirmed = confirm(
-                'This file has unsaved changes. Are you sure you want to replace it? All annotations will be lost.'
-            );
-            if (!confirmed) return;
-        }
-        fileInput.click();
-    });
-
-    fileInput.addEventListener('change', e => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        if (file.type === 'application/pdf') {
-            loadPDF(file);
-        } else {
-            showTemporaryMessage('Not a PDF');
-        }
-    });
-
-    document.querySelectorAll('.tool-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            if (btn.dataset.tool) {
-                setActiveTool(btn.dataset.tool);
-            }
-        });
-    });
-
-    btnSavePdf.addEventListener('click', saveAllPagesAsPDF);
-
-    fontSizeInput.addEventListener('input', () => {
-        currentFontSize = parseInt(fontSizeInput.value, 10) || 12;
-        updateSelectedObjectProperties();
-    });
-
-    fontFamilySelect.addEventListener('change', () => {
-        currentFontFamily = fontFamilySelect.value;
-        updateSelectedObjectProperties();
-    });
-
-    // ==== INITIALIZE ====
-    setActiveTool('select');
-    currentFontSize = parseInt(fontSizeInput.value, 10) || 24;
-    currentFontFamily = fontFamilySelect.value;
-    fontSizeInput.disabled = true;
-    fontFamilySelect.disabled = true;
-})();
+fileInput.addEventListener('change',e=>{
+    const f=e.target.files[0];
+    if(f&&f.type==='application/pdf')loadPDF(f);
+    else if(f)showTemporaryMessage("Not a PDF");
+});
+document.querySelectorAll('.tool-btn').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.tool)setActiveTool(b.dataset.tool);}));
+btnSavePdf.addEventListener('click',saveAllPagesAsPDF);
+fontSizeInput.addEventListener('input',()=>{currentFontSize=parseInt(fontSizeInput.value)||12;updateSelectedObjectProperties();});
+fontFamilySelect.addEventListener('change',()=>{currentFontFamily=fontFamilySelect.value;updateSelectedObjectProperties();});
+setActiveTool('select');currentFontSize=parseInt(fontSizeInput.value);currentFontFamily=fontFamilySelect.value;
+fontSizeInput.disabled=true;fontFamilySelect.disabled=true;
 </script>
+</div>
+
+</body>
+</html>
