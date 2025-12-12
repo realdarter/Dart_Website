@@ -78,10 +78,10 @@
             <button id="btnLoadPdf" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-5 rounded-xl">Load PDF</button>
             <button id="btnSavePdf" class="bg-emerald-500 hover:bg-emerald-700 text-white font-bold py-2 px-5 rounded-xl disabled:opacity-50" disabled>Save PDF</button>
             <div class="border-l border-gray-300 h-8"></div>
-            <button id="toolDraw" data-tool="draw" class="tool-btn rounded-xl hover:bg-slate-300">Draw</button>
-            <button id="toolArrow" data-tool="arrow" class="tool-btn rounded-xl hover:bg-slate-300">Arrow</button>
-            <button id="toolText" data-tool="text" class="tool-btn rounded-xl hover:bg-slate-300">Text</button>
-            <button id="toolSelect" data-tool="select" class="tool-btn rounded-xl hover:bg-slate-300 active-tool">Select</button>
+            <button id="toolDraw" data-tool="draw" class="tool-btn rounded-xl hover:bg-slate-300">Draw <span class="text-xs opacity-70">(1)</span></button>
+            <button id="toolArrow" data-tool="arrow" class="tool-btn rounded-xl hover:bg-slate-300">Arrow <span class="text-xs opacity-70">(2)</span></button>
+            <button id="toolText" data-tool="text" class="tool-btn rounded-xl hover:bg-slate-300">Text <span class="text-xs opacity-70">(3)</span></button>
+            <button id="toolSelect" data-tool="select" class="tool-btn rounded-xl hover:bg-slate-300 active-tool">Select <span class="text-xs opacity-70">(4)</span></button>
             <div class="border-l border-gray-300 h-8"></div>
             <div class="tool-control-group">
                 <label for="fontSizeInput">Size:</label>
@@ -153,7 +153,8 @@
         </div>
         <p id="initialMessage" class="text-center text-gray-600 p-10 text-xl bg-white rounded-2xl shadow-xl mt-16">
             🚀 <b>DraftAnnotator</b><br>
-            Load PDF • Draw in RED • Ctrl+Scroll zoom • Right-click pan • Delete to remove
+            <span class="text-base">Load PDF • Draw in RED • Shift+Scroll zoom • Right-click pan</span><br>
+            <span class="text-sm mt-2 block text-gray-500">Shortcuts: 1=Draw, 2=Arrow, 3=Text, 4=Select</span>
         </p>
     </div>
 </main>
@@ -503,7 +504,22 @@ pdfViewer.addEventListener('wheel',e=>{
 },{passive:false});
 
 document.addEventListener('keydown',e=>{
-    if((e.ctrlKey||e.metaKey)&&e.key==='z' && !e.shiftKey){
+    // Tool shortcuts
+    if(e.key==='1'){
+        e.preventDefault();
+        setActiveTool('draw');
+    }else if(e.key==='2'){
+        e.preventDefault();
+        setActiveTool('arrow');
+    }else if(e.key==='3'){
+        e.preventDefault();
+        setActiveTool('text');
+    }else if(e.key==='4'){
+        e.preventDefault();
+        setActiveTool('select');
+    }
+    // Undo/Redo
+    else if((e.ctrlKey||e.metaKey)&&e.key==='z' && !e.shiftKey){
         e.preventDefault();
         undo();
     }else if((e.ctrlKey||e.metaKey)&&(e.key==='y'||(e.key==='z'&&e.shiftKey))){
