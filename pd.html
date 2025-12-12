@@ -504,6 +504,20 @@ pdfViewer.addEventListener('wheel',e=>{
 },{passive:false});
 
 document.addEventListener('keydown',e=>{
+    // Don't trigger shortcuts if user is typing in a text field
+    const isTyping = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable;
+    
+    // Check if editing text on canvas
+    let isEditingCanvas = false;
+    fabricCanvases.forEach(c=>{
+        const activeObj = c.getActiveObject();
+        if(activeObj && activeObj.type === 'i-text' && activeObj.isEditing){
+            isEditingCanvas = true;
+        }
+    });
+    
+    if(isTyping || isEditingCanvas) return;
+    
     // Tool shortcuts
     if(e.key==='1'){
         e.preventDefault();
