@@ -8,14 +8,11 @@
     <style>
         .pdf-page-container {
             position: relative;
-            margin: 20px auto; /* Base margin */
+            margin: 20px auto;
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
             border-radius: 12px;
             border: 1px solid #e5e7eb;
-            /* Changed origin to top center to expand downwards */
-            transform-origin: top center;
-            /* Added margin-bottom to transition for smooth spacing */
-            transition: transform 0.1s ease-out, margin-bottom 0.1s ease-out;
+            transition: transform 0.1s ease-out;
             display: inline-block;
         }
         .pdf-viewer-canvas {
@@ -188,18 +185,35 @@ function saveCanvasState(c){
 }
 
 function undo(){
-    for(const el of document.querySelectorAll('.pdf-page-container')){
-        const n=parseInt(el.dataset.pageNum,10),c=fabricCanvases.get(n);
-        if(c&&c.history&&c.historyPointer>0){
+    const activeCanvases = Array.from(fabricCanvases.values());
+    for(const c of activeCanvases){
+        if(c.history && c.historyPointer > 0){
             c.historyPointer--;
             c.loadFromJSON(c.history[c.historyPointer],()=>{
                 c.renderAll();
                 c.forEachObject(o=>{o.selectable=activeTool==='select';o.evented=activeTool==='select';});
             },(o,obj)=>{if(o.annotationType)obj.annotationType=o.annotationType;});
-            showTemporaryMessage("Undo");return;
+            showTemporaryMessage("Undo");
+            return;
         }
     }
     showTemporaryMessage("Nothing to undo");
+}
+
+function redo(){
+    const activeCanvases = Array.from(fabricCanvases.values());
+    for(const c of activeCanvases){
+        if(c.history && c.historyPointer < c.history.length - 1){
+            c.historyPointer++;
+            c.loadFromJSON(c.history[c.historyPointer],()=>{
+                c.renderAll();
+                c.forEachObject(o=>{o.selectable=activeTool==='select';o.evented=activeTool==='select';});
+            },(o,obj)=>{if(o.annotationType)obj.annotationType=o.annotationType;});
+            showTemporaryMessage("Redo");
+            return;
+        }
+    }
+    showTemporaryMessage("Nothing to redo");
 }
 
 function setActiveTool(t){
@@ -309,8 +323,16 @@ async function renderPage(n){
         fc.on('object:added',()=>{if(activeTool==='draw')saveCanvasState(fc);});
         fc.on('path:created',e=>{if(e.path)e.path.set({selectable:true,evented:true,hasControls:true,hasBorders:true});saveCanvasState(fc);});
         fc.on('mouse:down',o=>{
-            if(o.e.button===2){isPanning=true;panStartX=o.e.clientX-panOffsetX;panStartY=o.e.clientY-panOffsetY;fc.defaultCursor='grabbing';}
-            else{handleTextPlacement(fc,o);handleArrowStart(fc,o);}
+            if(o.e.button===2){
+                isPanning=true;panStartX=o.e.clientX-panOffsetX;panStartY=o.e.clientY-panOffsetY;fc.defaultCursor='grabbing';
+            }else{
+                // Don't create new objects if clicking on existing object in arrow/text mode
+                if(activeTool==='text' && !o.target){
+                    handleTextPlacement(fc,o);
+                }else if(activeTool==='arrow' && !o.target){
+                    handleArrowStart(fc,o);
+                }
+            }
         });
         fc.on('mouse:move',o=>{
             if(isPanning){panOffsetX=o.e.clientX-panStartX;panOffsetY=o.e.clientY-panStartY;pdfViewer.style.transform=`translate(${panOffsetX}px,${panOffsetY}px)`;}
@@ -453,7 +475,7 @@ function showTemporaryMessage(m){
 }
 
 pdfViewer.addEventListener('wheel',e=>{
-    if(e.ctrlKey || e.metaKey){
+    if(e.shiftKey){
         e.preventDefault();
         
         // Get mouse position relative to viewer
@@ -474,30 +496,21 @@ pdfViewer.addEventListener('wheel',e=>{
         
         currentZoom = newZoom;
         
-        // Apply transforms to viewer for panning
         pdfViewer.style.transform = `translate(${panOffsetX}px, ${panOffsetY}px)`;
-        
-        // Apply scale to individual pages and FIX OVERLAP
-        document.querySelectorAll('.pdf-page-container').forEach(c => {
-            c.style.transform = `scale(${currentZoom})`;
-            
-            // Calculate and apply margin compensation for the scale
-            // When an element scales up, it flows in its original size.
-            // We must add margin-bottom to push the next element down.
-            const originalHeight = parseInt(c.style.height, 10);
-            if(originalHeight) {
-                // Formula: original height * (zoom - 1) gives the extra visual height
-                // Add base margin (20px) to that
-                const extraMargin = originalHeight * (currentZoom - 1);
-                c.style.marginBottom = `${20 + extraMargin}px`;
-            }
-        });
-        
+        document.querySelectorAll('.pdf-page-container').forEach(c=>c.style.transform=`scale(${currentZoom})`);
         showTemporaryMessage(`Zoom: ${Math.round(currentZoom*100)}%`);
     }
 },{passive:false});
 
-document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();undo();}});
+document.addEventListener('keydown',e=>{
+    if((e.ctrlKey||e.metaKey)&&e.key==='z' && !e.shiftKey){
+        e.preventDefault();
+        undo();
+    }else if((e.ctrlKey||e.metaKey)&&(e.key==='y'||(e.key==='z'&&e.shiftKey))){
+        e.preventDefault();
+        redo();
+    }
+});
 btnLoadPdf.addEventListener('click',()=>{
     if(hasUnsavedChanges&&pdfDoc){
         const confirmed=confirm('This file has unsaved changes. Are you sure you want to replace it? All annotations will be lost.');
