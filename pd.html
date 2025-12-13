@@ -5,78 +5,37 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Professional PDF Annotator</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        .pdf-page-container {
-            position: relative;
-            margin: 20px auto;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-            border-radius: 12px;
-            border: 1px solid #e5e7eb;
-            transition: transform 0.1s ease-out;
-            display: inline-block;
-        }
-        .pdf-viewer-canvas {
-            display: block;
-            background-color: white;
-            position: relative;
-            z-index: 1;
-        }
-        .canvas-container {
-            position: absolute !important;
-            top: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            bottom: 0 !important;
-            width: 100% !important;
-            height: 100% !important;
-            z-index: 10 !important;
-        }
-        .lower-canvas {
-            position: absolute !important;
-            top: 0 !important;
-            left: 0 !important;
-            z-index: 1 !important;
-        }
-        .upper-canvas {
-            position: absolute !important;
-            top: 0 !important;
-            left: 0 !important;
-            z-index: 2 !important;
-            cursor: crosshair !important;
-        }
-        .active-tool {
-            background-color: #4f46e5 !important;
-            color: #ffffff !important;
-            box-shadow: 0 4px 10px rgba(79, 70, 229, 0.6);
-        }
-        .tool-btn {
-            transition: all 0.15s ease-in-out;
-            background-color: #e2e8f0;
-            color: #1e293b;
-            font-weight: 600;
-            padding: 0.6rem 1rem;
-        }
-        #fileInput { display: none; }
-        .tool-control-group {
-            display: flex;
-            align-items: center;
-            padding: 4px 10px;
-            border-radius: 8px;
-            background-color: #fff;
-            border: 1px solid #d1d5db;
-            margin-right: 8px;
-        }
-        #pdfViewer { transition: transform 0.1s ease-out; }
-    </style>
+    <link rel="stylesheet" href="css/pd.css">
 </head>
 <body class="bg-gray-50 min-h-screen">
 
-<header class="bg-white shadow-xl sticky top-0 z-20 border-b border-gray-200">
-    <div class="max-w-full mx-auto py-3 px-4 flex flex-wrap items-center justify-between">
-        <h1 class="text-2xl font-extrabold text-gray-900"><span class="text-indigo-600">Draft</span>Annotator</h1>
-        <div class="flex flex-wrap items-center space-x-3 mt-2 sm:mt-0">
-            <button id="btnLoadPdf" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-5 rounded-xl">Load PDF</button>
-            <button id="btnSavePdf" class="bg-emerald-500 hover:bg-emerald-700 text-white font-bold py-2 px-5 rounded-xl disabled:opacity-50" disabled>Save PDF</button>
+<!-- Loading bar -->
+<div id="loadingOverlay" class="fixed top-24 inset-x-0 z-30 hidden">
+    <div class="max-w-xl mx-auto px-4">
+        <div class="flex items-center space-x-3 bg-white/95 border border-indigo-100 shadow-lg rounded-full px-4 py-2">
+            <div class="animate-spin rounded-full h-6 w-6 border-t-4 border-b-4 border-indigo-600"></div>
+            <div class="flex flex-col leading-tight">
+                <span class="font-semibold text-gray-900 text-sm">Loading document...</span>
+                <span class="text-xs text-gray-600">Preparing pages and annotations</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<header class="bg-white shadow-xl fixed top-0 left-0 right-0 z-20 border-b border-gray-200">
+    <div class="max-w-full mx-auto py-3 px-4 flex items-center justify-between gap-4 min-h-[72px] overflow-hidden">
+        <div class="flex items-center gap-3 min-w-0">
+            <h1 class="text-2xl font-extrabold text-gray-900"><span class="text-indigo-600">Draft</span>Annotator</h1>
+            <div id="fileNameDisplay" class="hidden items-center gap-2 bg-gradient-to-r from-indigo-50 to-purple-50 px-4 py-2 rounded-lg border border-indigo-200 min-w-0 flex-shrink">
+                <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                </svg>
+                <span id="fileName" class="filename-display font-semibold text-gray-700"></span>
+            </div>
+        </div>
+        <div class="flex items-center gap-3 mt-0 overflow-x-auto whitespace-nowrap pl-2">
+            <button id="btnLoadPdf" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold py-1.5 px-4 rounded-lg">Load PDF</button>
+            <button id="btnSavePdf" class="bg-emerald-500 hover:bg-emerald-700 text-white text-sm font-bold py-1.5 px-4 rounded-lg disabled:opacity-50" disabled>Save PDF</button>
             <div class="border-l border-gray-300 h-8"></div>
             <button id="toolDraw" data-tool="draw" class="tool-btn rounded-xl hover:bg-slate-300">Draw <span class="text-xs opacity-70">(1)</span></button>
             <button id="toolArrow" data-tool="arrow" class="tool-btn rounded-xl hover:bg-slate-300">Arrow <span class="text-xs opacity-70">(2)</span></button>
@@ -84,12 +43,12 @@
             <button id="toolSelect" data-tool="select" class="tool-btn rounded-xl hover:bg-slate-300 active-tool">Select <span class="text-xs opacity-70">(4)</span></button>
             <div class="border-l border-gray-300 h-8"></div>
             <div class="tool-control-group">
-                <label for="fontSizeInput">Size:</label>
-                <input type="number" id="fontSizeInput" value="24" min="8" max="72" class="w-14 text-sm rounded-lg">
+                <label for="fontSizeInput" class="mr-2">Size:</label>
+                <input type="number" id="fontSizeInput" value="24" min="8" max="72" class="w-14 text-sm rounded-lg px-2 py-1 border border-gray-300">
             </div>
             <div class="tool-control-group">
-                <label for="fontFamilySelect">Font:</label>
-                <select id="fontFamilySelect" class="text-sm rounded-lg">
+                <label for="fontFamilySelect" class="mr-2">Font:</label>
+                <select id="fontFamilySelect" class="text-sm rounded-lg px-2 py-1 border border-gray-300">
                     <option value="sans-serif">Sans-Serif</option>
                     <option value="serif">Serif</option>
                     <option value="monospace">Monospace</option>
@@ -100,8 +59,8 @@
 </header>
 
 <div class="flex">
-<!-- Sidebar -->
-<aside class="w-72 bg-white shadow-xl border-r border-gray-200 overflow-y-auto h-screen sticky top-0">
+<!-- Left Sidebar -->
+<aside class="w-72 bg-white shadow-xl border-r border-gray-200 overflow-y-auto fixed left-0 top-0 bottom-0 z-10 pt-20">
     <div class="p-5">
         <h2 class="text-xl font-bold text-gray-900 mb-4">📋 Quick Reference</h2>
         
@@ -141,7 +100,7 @@
 </aside>
 
 <!-- Main Content -->
-<div class="flex-1">
+<div class="flex-1 ml-72 mt-20 pr-6">
 
 <input type="file" id="fileInput" accept="application/pdf">
 
@@ -153,73 +112,111 @@
         </div>
         <p id="initialMessage" class="text-center text-gray-600 p-10 text-xl bg-white rounded-2xl shadow-xl mt-16">
             🚀 <b>DraftAnnotator</b><br>
-            <span class="text-base">Load PDF • Draw in RED • Shift+Scroll zoom • Right-click pan</span><br>
-            <span class="text-sm mt-2 block text-gray-500">Shortcuts: 1=Draw, 2=Arrow, 3=Text, 4=Select</span>
+            <span class="text-base">Load PDF • Draw in RED • Right-click to pan</span><br>
+            <span class="text-sm mt-2 block text-gray-500">Shortcuts: 1=Draw, 2=Arrow, 3=Text, 4=Select | Ctrl+Z=Undo, Ctrl+Y=Redo</span>
         </p>
     </div>
 </main>
 
-<div id="tempMessageBox" class="fixed bottom-5 right-5 bg-indigo-600 text-white p-4 rounded-lg shadow-2xl transition-opacity duration-300 opacity-0" style="pointer-events:none;min-width:200px;text-align:center;"></div>
+<div id="tempMessageBox" class="fixed bottom-5 left-1/2 transform -translate-x-1/2 bg-indigo-600 text-white px-6 py-3 rounded-lg shadow-2xl transition-opacity duration-300 opacity-0" style="pointer-events:none;min-width:200px;text-align:center;font-weight:600;"></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
-<script>pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';</script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<!-- Page indicator -->
+<div id="pageIndicator" class="fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-gray-900 to-gray-800 text-white px-4 py-2 rounded-full shadow-xl font-semibold text-base hidden border-2 border-gray-700">
+    <span class="text-indigo-300">Page</span> <span id="currentPageNum" class="text-white text-xl">1</span> <span class="text-gray-400">of</span> <span id="totalPagesNum" class="text-white text-xl">1</span>
+</div>
+
+</div>
+
+<script src="lib/pdf.min.js"></script>
+<script>pdfjsLib.GlobalWorkerOptions.workerSrc='lib/pdf.worker.min.js';</script>
+<script src="lib/fabric.min.js"></script>
+<script src="lib/jspdf.umd.min.js"></script>
+<script src="lib/pdf-lib.min.js"></script>
 
 <script>
 const {jsPDF}=window.jspdf;
 let pdfDoc=null,numPages=0,scale=1.5,activeTool='select',currentFontSize=24,currentFontFamily='sans-serif';
 let isPanning=false,panStartX=0,panStartY=0,panOffsetX=0,panOffsetY=0,currentZoom=1;
-let hasUnsavedChanges=false;
+let hasUnsavedChanges=false,currentFileName='';
+let originalPdfBytes=null;
 const pdfViewer=document.getElementById('pdfViewer'),fileInput=document.getElementById('fileInput');
 const btnLoadPdf=document.getElementById('btnLoadPdf'),btnSavePdf=document.getElementById('btnSavePdf');
 const fontSizeInput=document.getElementById('fontSizeInput'),fontFamilySelect=document.getElementById('fontFamilySelect');
 const fabricCanvases=new Map();
+let currentVisiblePage=1;
+const loadingOverlay=document.getElementById('loadingOverlay');
+const PAGE_SCALE_ADJUST=0.9; // lighter initial render for speed
+let textPlacementArmed=true;
+let pageIndicatorTimer=null;
+let renderedPages=new Set();
+let pageRenderObserver=null;
+let baseScale=null;
+const pageSizeMap=new Map();
+let defaultPageSize={w:900,h:1200};
+const historyStack=[];
+let historyPointer=-1;
+
+function pushHistoryEntry(pageNum,state){
+    historyStack.splice(historyPointer+1);
+    historyStack.push({pageNum,state});
+    historyPointer=historyStack.length-1;
+    hasUnsavedChanges=historyPointer>0;
+}
 
 function saveCanvasState(c){
-    if(!c.history){c.history=[];c.historyPointer=-1;}
-    if(c.historyPointer<c.history.length-1)c.history=c.history.slice(0,c.historyPointer+1);
-    c.history.push(JSON.stringify(c.toJSON(['annotationType','selectable','evented'])));
-    c.historyPointer=c.history.length-1;
-    if(c.history.length>50){c.history.shift();c.historyPointer--;}
-    if(c.historyPointer>0)hasUnsavedChanges=true;
+    if(c._restoring) return;
+    const state=JSON.stringify(c.toJSON(['annotationType','selectable','evented']));
+    if(!c._historySeeded){
+        const baseline=c._lastSavedState||state;
+        pushHistoryEntry(c._pageNum,baseline);
+        c._historySeeded=true;
+    }
+    if(historyStack[historyPointer]?.state===state) return;
+    pushHistoryEntry(c._pageNum,state);
+    c._lastSavedState=state;
+    c.lastModifiedTime = Date.now();
 }
 
 function undo(){
-    const activeCanvases = Array.from(fabricCanvases.values());
-    for(const c of activeCanvases){
-        if(c.history && c.historyPointer > 0){
-            c.historyPointer--;
-            c.loadFromJSON(c.history[c.historyPointer],()=>{
-                c.renderAll();
-                c.forEachObject(o=>{o.selectable=activeTool==='select';o.evented=activeTool==='select';});
-            },(o,obj)=>{if(o.annotationType)obj.annotationType=o.annotationType;});
-            showTemporaryMessage("Undo");
-            return;
-        }
-    }
-    showTemporaryMessage("Nothing to undo");
+    if(historyPointer<=0){showTemporaryMessage("Nothing to undo");return;}
+    historyPointer--;
+    hasUnsavedChanges=historyPointer>0;
+    const entry=historyStack[historyPointer];
+    const canvas=fabricCanvases.get(entry.pageNum);
+    if(!canvas){showTemporaryMessage("Nothing to undo");return;}
+    canvas._restoring=true;
+    canvas.loadFromJSON(entry.state,()=>{
+        canvas._restoring=false;
+        canvas.renderAll();
+        canvas.forEachObject(o=>{o.selectable=activeTool==='select';o.evented=activeTool==='select';});
+    },(o,obj)=>{if(o.annotationType)obj.annotationType=o.annotationType;});
+    canvas._lastSavedState=entry.state;
+    currentVisiblePage=entry.pageNum;
+    showTemporaryMessage("Undo");
 }
 
 function redo(){
-    const activeCanvases = Array.from(fabricCanvases.values());
-    for(const c of activeCanvases){
-        if(c.history && c.historyPointer < c.history.length - 1){
-            c.historyPointer++;
-            c.loadFromJSON(c.history[c.historyPointer],()=>{
-                c.renderAll();
-                c.forEachObject(o=>{o.selectable=activeTool==='select';o.evented=activeTool==='select';});
-            },(o,obj)=>{if(o.annotationType)obj.annotationType=o.annotationType;});
-            showTemporaryMessage("Redo");
-            return;
-        }
-    }
-    showTemporaryMessage("Nothing to redo");
+    if(historyPointer>=historyStack.length-1){showTemporaryMessage("Nothing to redo");return;}
+    historyPointer++;
+    hasUnsavedChanges=historyPointer>0;
+    const entry=historyStack[historyPointer];
+    const canvas=fabricCanvases.get(entry.pageNum);
+    if(!canvas){showTemporaryMessage("Nothing to redo");return;}
+    canvas._restoring=true;
+    canvas.loadFromJSON(entry.state,()=>{
+        canvas._restoring=false;
+        canvas.renderAll();
+        canvas.forEachObject(o=>{o.selectable=activeTool==='select';o.evented=activeTool==='select';});
+    },(o,obj)=>{if(o.annotationType)obj.annotationType=o.annotationType;});
+    canvas._lastSavedState=entry.state;
+    currentVisiblePage=entry.pageNum;
+    showTemporaryMessage("Redo");
 }
 
 function setActiveTool(t){
     activeTool=t;
     document.querySelectorAll('.tool-btn').forEach(b=>b.classList.toggle('active-tool',b.dataset.tool===t));
+    textPlacementArmed = t === 'text'; // arm text on activation; disarm after first placement
     fabricCanvases.forEach(c=>{
         c.selection=t==='select';c.isDrawingMode=t==='draw';
         c.defaultCursor=t==='draw'?'crosshair':t==='text'?'text':t==='arrow'?'crosshair':'default';
@@ -262,11 +259,18 @@ function handleArrowEnd(){
 }
 
 function handleTextPlacement(c,o){
-    if(activeTool!=='text'||o.target)return;
+    if(activeTool!=='text'||o.target||!textPlacementArmed){
+        if(activeTool==='text' && !o.target && !textPlacementArmed){
+            // first click after an edit just rearms placement
+            textPlacementArmed=true;
+        }
+        return;
+    }
     const p=c.getPointer(o.e),txt=new fabric.IText('',{
         left:p.x,top:p.y,fontFamily:currentFontFamily,fontSize:currentFontSize,fill:'red',selectable:true,evented:true
     });
     c.add(txt);c.setActiveObject(txt);txt.enterEditing();saveCanvasState(c);
+    textPlacementArmed=false; // require another click to arm for next text
 }
 
 function updateSelectedObjectProperties(){
@@ -276,29 +280,99 @@ function updateSelectedObjectProperties(){
     });
 }
 
-async function renderPage(n){
-    try{
-        const pg=await pdfDoc.getPage(n),vp=pg.getViewport({scale:1});
-        const w=Math.min(window.innerWidth-100,1400);
-        scale=w/vp.width;
-        const sv=pg.getViewport({scale});
+function updatePageIndicator(){
+    const pageIndicator = document.getElementById('pageIndicator');
+    const currentPageNum = document.getElementById('currentPageNum');
+    const totalPagesNum = document.getElementById('totalPagesNum');
+    
+    if(numPages > 0){
+        pageIndicator.classList.remove('hidden');
+        currentPageNum.textContent = currentVisiblePage;
+        totalPagesNum.textContent = numPages;
+        // fade in then auto-hide after 4s
+        pageIndicator.style.opacity='1';
+        if(pageIndicatorTimer) clearTimeout(pageIndicatorTimer);
+        pageIndicatorTimer=setTimeout(()=>{
+            pageIndicator.style.opacity='0';
+            setTimeout(()=>pageIndicator.classList.add('hidden'),220);
+        },4000);
+    } else {
+        pageIndicator.classList.add('hidden');
+    }
+}
+
+function updateVisiblePage(){
+    const containers = document.querySelectorAll('.pdf-page-container');
+    const viewportMiddle = window.innerHeight / 2;
+    let closestPage = 1;
+    let closestDistance = Infinity;
+    
+    containers.forEach(cont => {
+        const rect = cont.getBoundingClientRect();
+        const containerMiddle = rect.top + rect.height / 2;
+        const distance = Math.abs(containerMiddle - viewportMiddle);
         
-        const cont=document.createElement('div');
+        if(distance < closestDistance){
+            closestDistance = distance;
+            closestPage = parseInt(cont.dataset.pageNum);
+        }
+    });
+    
+    if(closestPage !== currentVisiblePage){
+        currentVisiblePage = closestPage;
+        updatePageIndicator();
+    }
+}
+
+async function scrollToPage(pageNum){
+    let container = document.querySelector(`[data-page-num="${pageNum}"]`);
+    if(!renderedPages.has(pageNum)){
+        await renderPage(pageNum,container||null);
+        container = document.querySelector(`[data-page-num="${pageNum}"]`);
+    }
+    if(!container)return;
+    const headerEl=document.querySelector('header');
+    const headerOffset=headerEl?(headerEl.offsetHeight+8):0;
+    const rect=container.getBoundingClientRect();
+    const targetY=rect.top+window.pageYOffset-headerOffset;
+    window.scrollTo({top:targetY,behavior:'smooth'});
+    currentVisiblePage=pageNum;
+    updatePageIndicator();
+}
+
+async function renderPage(n,containerOverride=null){
+    try{
+        if(renderedPages.has(n)) return null;
+        const pg=await pdfDoc.getPage(n),vp=pg.getViewport({scale:1});
+        if(baseScale===null){
+            const w=Math.min(window.innerWidth-40-288,1600);
+            baseScale=w/vp.width*PAGE_SCALE_ADJUST;
+        }
+        scale=baseScale;
+        const dpr=window.devicePixelRatio||1;
+        const renderViewport=pg.getViewport({scale:scale*dpr});
+        const displayWidth=renderViewport.width/dpr;
+        const displayHeight=renderViewport.height/dpr;
+        defaultPageSize={w:displayWidth,h:displayHeight};
+        
+        const cont=containerOverride || document.querySelector(`[data-page-num="${n}"]`) || document.createElement('div');
         cont.className='pdf-page-container';
-        cont.style.width=`${sv.width}px`;
-        cont.style.height=`${sv.height}px`;
+        cont.style.width=`${displayWidth}px`;
+        cont.style.height=`${displayHeight}px`;
+        cont.style.minHeight='0px';
         cont.dataset.pageNum=n;
+        cont.innerHTML='';
         
         const pdfC=document.createElement('canvas');
         pdfC.className='pdf-viewer-canvas';
-        pdfC.width=sv.width;
-        pdfC.height=sv.height;
-        pdfC.style.width=`${sv.width}px`;
-        pdfC.style.height=`${sv.height}px`;
+        pdfC.width=renderViewport.width;
+        pdfC.height=renderViewport.height;
+        pdfC.style.width=`${displayWidth}px`;
+        pdfC.style.height=`${displayHeight}px`;
         cont.appendChild(pdfC);
-        await pg.render({canvasContext:pdfC.getContext('2d'),viewport:sv}).promise;
+        await pg.render({canvasContext:pdfC.getContext('2d'),viewport:renderViewport}).promise;
         
-        pdfViewer.appendChild(cont);
+        if(!cont.parentElement) pdfViewer.appendChild(cont);
         
         const fabEl=document.createElement('canvas');
         fabEl.id=`fabric-canvas-${n}`;
@@ -310,24 +384,26 @@ async function renderPage(n){
         const fc=new fabric.Canvas(fabEl,{
             selection:true,
             isDrawingMode:false,
-            width:sv.width,
-            height:sv.height
+            width:displayWidth,
+            height:displayHeight
         });
+        fc._pageNum=n;
+        fc._lastSavedState=JSON.stringify(fc.toJSON(['annotationType','selectable','evented']));
+        fc._historySeeded=false;
         
         fc.freeDrawingBrush=new fabric.PencilBrush(fc);
         fc.freeDrawingBrush.color='red';
         fc.freeDrawingBrush.width=3;
         
-        saveCanvasState(fc);
-        fc.on('object:modified',()=>saveCanvasState(fc));
-        fc.on('object:removed',()=>saveCanvasState(fc));
-        fc.on('object:added',()=>{if(activeTool==='draw')saveCanvasState(fc);});
-        fc.on('path:created',e=>{if(e.path)e.path.set({selectable:true,evented:true,hasControls:true,hasBorders:true});saveCanvasState(fc);});
+        fc.on('object:modified',()=>{if(!fc._restoring)saveCanvasState(fc);});
+        fc.on('object:removed',()=>{if(!fc._restoring)saveCanvasState(fc);});
+        fc.on('object:added',()=>{if(!fc._restoring)saveCanvasState(fc);});
+        fc.on('path:created',e=>{if(e.path)e.path.set({selectable:true,evented:true,hasControls:true,hasBorders:true});if(!fc._restoring)saveCanvasState(fc);});
         fc.on('mouse:down',o=>{
+            fc.lastModifiedTime = Date.now();
             if(o.e.button===2){
                 isPanning=true;panStartX=o.e.clientX-panOffsetX;panStartY=o.e.clientY-panOffsetY;fc.defaultCursor='grabbing';
             }else{
-                // Don't create new objects if clicking on existing object in arrow/text mode
                 if(activeTool==='text' && !o.target){
                     handleTextPlacement(fc,o);
                 }else if(activeTool==='arrow' && !o.target){
@@ -367,16 +443,19 @@ async function renderPage(n){
         document.addEventListener('keydown',delH);
         fabricCanvases.set(n,fc);
         setActiveTool(activeTool);
+        renderedPages.add(n);
+        pageSizeMap.set(n,{w:displayWidth,h:displayHeight});
+        cont.style.minHeight=`${displayHeight}px`;
+        cont.dataset.rendered='true';
+        return {width:displayWidth,height:displayHeight};
     }catch(err){console.error(`Error page ${n}:`,err);}
 }
 
 async function renderAllPages(){
     if(!pdfDoc)return;
     
-    // Clear the viewer completely
     pdfViewer.innerHTML='';
     
-    // Clean up old event listeners and dispose canvases
     fabricCanvases.forEach(c=>{
         if(c._deleteHandler){
             document.removeEventListener('keydown',c._deleteHandler);
@@ -388,18 +467,54 @@ async function renderAllPages(){
         }
     });
     
+    if(pageRenderObserver){pageRenderObserver.disconnect();}
+    pageRenderObserver=null;
+    renderedPages.clear();
     fabricCanvases.clear();
+    historyStack.length=0;
+    historyPointer=-1;
+    hasUnsavedChanges=false;
     
-    // Reset zoom and pan
     currentZoom=1;
     panOffsetX=0;
     panOffsetY=0;
     pdfViewer.style.transform='translate(0,0)';
+    currentVisiblePage=1;
+    baseScale=null;
+    let placeholderHeight=defaultPageSize.h||800;
+    const eager=Math.min(2,numPages);
     
-    // Render all pages
     for(let i=1;i<=numPages;i++){
-        await renderPage(i);
+        const cont=document.createElement('div');
+        cont.className='pdf-page-container';
+        cont.dataset.pageNum=i;
+        cont.style.minHeight=`${placeholderHeight}px`;
+        cont.innerHTML='<div class="text-sm text-gray-400 py-6 text-center">Loading page...</div>';
+        pdfViewer.appendChild(cont);
+        if(i<=eager){
+            const dims=await renderPage(i,cont);
+            if(dims) placeholderHeight=dims.height;
+        }
     }
+    
+    pageRenderObserver=new IntersectionObserver(entries=>{
+        entries.forEach(entry=>{
+            if(entry.isIntersecting){
+                const pNum=parseInt(entry.target.dataset.pageNum,10);
+                if(!renderedPages.has(pNum)){
+                    renderPage(pNum,entry.target);
+                }
+            }
+        });
+    },{root:null,rootMargin:'200px 0px',threshold:0.05});
+    
+    document.querySelectorAll('.pdf-page-container').forEach(el=>{
+        const pNum=parseInt(el.dataset.pageNum,10);
+        if(renderedPages.has(pNum)) return;
+        pageRenderObserver.observe(el);
+    });
+    
+    updatePageIndicator();
 }
 
 async function loadPDF(f){
@@ -408,18 +523,24 @@ async function loadPDF(f){
     
     if(initialMessage) initialMessage.style.display='none';
     if(loadingMessage) loadingMessage.style.display='block';
+    if(loadingOverlay) loadingOverlay.classList.remove('hidden');
     
     btnSavePdf.disabled=true;
     
     try{
-        // Clean up old PDF document
         if(pdfDoc){
             pdfDoc.destroy();
             pdfDoc = null;
         }
         
+        currentFileName = f.name;
+        document.getElementById('fileName').textContent = currentFileName;
+        document.getElementById('fileNameDisplay').classList.remove('hidden');
+        document.getElementById('fileNameDisplay').classList.add('flex');
+        
         const ab=await f.arrayBuffer();
-        pdfDoc=await pdfjsLib.getDocument({data:new Uint8Array(ab)}).promise;
+        originalPdfBytes=new Uint8Array(ab);
+        pdfDoc=await pdfjsLib.getDocument({data:originalPdfBytes}).promise;
         numPages=pdfDoc.numPages;
         
         console.log('Loading new PDF with',numPages,'pages');
@@ -428,40 +549,175 @@ async function loadPDF(f){
         btnSavePdf.disabled=false;
         hasUnsavedChanges=false;
         
-        showTemporaryMessage(`PDF loaded: ${numPages} page(s)`);
+        showTemporaryMessage(`✓ PDF loaded: ${numPages} page(s)`);
     }catch(e){
         console.error('Load err:',e);
         pdfViewer.innerHTML=`<div class="text-red-600 p-8">Error: ${e.message}</div>`;
     }finally{
         if(loadingMessage) loadingMessage.style.display='none';
+        if(loadingOverlay) loadingOverlay.classList.add('hidden');
         fileInput.value='';
     }
 }
 
 async function saveAllPagesAsPDF(){
     if(!numPages||!fabricCanvases.size){showTemporaryMessage("Load PDF first");return;}
+    if(!originalPdfBytes){showTemporaryMessage("Missing source PDF");return;}
     btnSavePdf.disabled=true;btnSavePdf.textContent='Generating...';
     try{
+        // ensure any in-progress text edits are committed before export
+        fabricCanvases.forEach(c=>{
+            const active=c.getActiveObject();
+            if(active && active.isEditing && active.exitEditing){
+                active.exitEditing();
+                c.discardActiveObject();
+                c.renderAll();
+            }
+        });
+        
+        const PDFLib = window.PDFLib;
+        const { PDFDocument, StandardFonts, rgb } = PDFLib;
+        const baseDoc = await PDFDocument.load(originalPdfBytes);
+        const helv = await baseDoc.embedFont(StandardFonts.Helvetica);
+        const helvBold = await baseDoc.embedFont(StandardFonts.HelveticaBold);
+        const RASTER_MULTIPLIER=3;
         const conts=Array.from(document.querySelectorAll('.pdf-page-container')).sort((a,b)=>parseInt(a.dataset.pageNum)-parseInt(b.dataset.pageNum));
-        const p1=await pdfDoc.getPage(1),v1=p1.getViewport({scale:1});
-        const wm=v1.width*0.352778,hm=v1.height*0.352778;
-        const doc=new jsPDF({orientation:wm>hm?'l':'p',unit:'mm',format:[wm,hm]});
-        let first=true;
+        
+        function fabricColorToPdfColor(colorStr){
+            try{
+                const ctx=document.createElement('canvas').getContext('2d');
+                ctx.fillStyle=colorStr||'black';
+                const c=ctx.fillStyle;
+                if(c.startsWith('#')){
+                    const hex=c.slice(1);
+                    const full=hex.length===3?hex.split('').map(ch=>ch+ch).join(''):hex;
+                    const num=parseInt(full,16);
+                    const r=((num>>16)&255)/255;
+                    const g=((num>>8)&255)/255;
+                    const b=(num&255)/255;
+                    return rgb(r,g,b);
+                }
+                const m=c.match(/^rgba?\((\d+), ?(\d+), ?(\d+)/i);
+                if(m){
+                    const r=parseInt(m[1],10)/255;
+                    const g=parseInt(m[2],10)/255;
+                    const b=parseInt(m[3],10)/255;
+                    return rgb(r,g,b);
+                }
+            }catch(e){}
+            return rgb(1,0,0); // default to red if parsing fails
+        }
+        
+        function drawTextObject(obj,page,pageWidth,pageHeight,pxW,pxH){
+            const color=fabricColorToPdfColor(obj.fill);
+            const size=obj.fontSize*(pageWidth/pxW);
+            const baseX=obj.left/pxW*pageWidth;
+            const baseY=pageHeight-((obj.top+obj.fontSize)/pxH*pageHeight);
+            const lh=(obj.lineHeight||1.16)*size;
+            const lines=(obj.text||'').split(/\r?\n/);
+            lines.forEach((line,idx)=>{
+                page.drawText(line,{
+                    x:baseX,
+                    y:baseY-(idx*lh),
+                    size,
+                    font:obj.fontWeight==='bold'?helvBold:helv,
+                    color
+                });
+            });
+        }
+        
+        function drawLine(obj,page,pageWidth,pageHeight,pxW,pxH){
+            const color=fabricColorToPdfColor(obj.stroke||obj.fill||'red');
+            const x1=obj.x1/pxW*pageWidth;
+            const y1=pageHeight-(obj.y1/pxH*pageHeight);
+            const x2=obj.x2/pxW*pageWidth;
+            const y2=pageHeight-(obj.y2/pxH*pageHeight);
+            page.drawLine({start:{x:x1,y:y1},end:{x:x2,y:y2},thickness:(obj.strokeWidth||2)*(pageWidth/pxW),color});
+        }
+        
+        function drawTriangle(obj,page,pageWidth,pageHeight,pxW,pxH){
+            const color=fabricColorToPdfColor(obj.fill||'red');
+            const br=obj.getBoundingRect();
+            const cx=(br.left+br.width/2)/pxW*pageWidth;
+            const cy=pageHeight-((br.top+br.height/2)/pxH*pageHeight);
+            const w=(br.width/pxW)*pageWidth;
+            const h=(br.height/pxH)*pageHeight;
+            const angle=((obj.angle||0)*Math.PI)/180;
+            const localPts=[[0,-h/2],[-w/2,h/2],[w/2,h/2]];
+            const absPts=localPts.map(([px,py])=>{
+                const xr=px*Math.cos(angle)-py*Math.sin(angle);
+                const yr=px*Math.sin(angle)+py*Math.cos(angle);
+                return {x:cx+xr,y:cy+yr};
+            });
+            const path=`${absPts.map((p,i)=>`${i===0?'M':'L'} ${p.x} ${p.y}`).join(' ')} Z`;
+            page.drawSvgPath(path,{color,borderColor:color});
+        }
+
+        const isVectorizable=obj=>{
+            if(!obj)return false;
+            if(obj.type==='i-text'||obj.type==='textbox')return true;
+            if(obj.type==='line')return true;
+            if(obj.type==='triangle')return true;
+            // groups (arrows) are rasterized to preserve head alignment
+            return false;
+        };
+
+        function renderRasterOverlay(fc,pxW,pxH,multiplier){
+            return new Promise(resolve=>{
+                const objects=fc.getObjects();
+                const hasRaster=objects.some(o=>!isVectorizable(o));
+                if(!hasRaster){resolve(null);return;}
+                const tempCanvas=document.createElement('canvas');
+                tempCanvas.width=pxW;
+                tempCanvas.height=pxH;
+                const temp=new fabric.StaticCanvas(tempCanvas,{width:pxW,height:pxH});
+                temp.loadFromJSON(fc.toJSON(),()=>{
+                    temp.getObjects().forEach(o=>{if(isVectorizable(o))temp.remove(o);});
+                    const dataUrl=temp.toDataURL({format:'png',multiplier});
+                    temp.dispose();
+                    resolve(dataUrl);
+                });
+            });
+        }
+        
+        async function drawAnnotations(fc,page,pageWidth,pageHeight,pxW,pxH){
+            const objs=fc.getObjects();
+            for(const obj of objs){
+                if(obj.type==='i-text'||obj.type==='textbox'){
+                    drawTextObject(obj,page,pageWidth,pageHeight,pxW,pxH);
+                }else if(obj.type==='line'){
+                    drawLine(obj,page,pageWidth,pageHeight,pxW,pxH);
+                }else if(obj.type==='triangle'){
+                    drawTriangle(obj,page,pageWidth,pageHeight,pxW,pxH);
+                }
+            }
+            const rasterDataUrl=await renderRasterOverlay(fc,pxW,pxH,RASTER_MULTIPLIER);
+            if(rasterDataUrl){
+                const pngBytes=await (await fetch(rasterDataUrl)).arrayBuffer();
+                const pngImage=await baseDoc.embedPng(pngBytes);
+                page.drawImage(pngImage,{x:0,y:0,width:pageWidth,height:pageHeight});
+            }
+        }
+
         for(const ct of conts){
             const pn=parseInt(ct.dataset.pageNum,10),fc=fabricCanvases.get(pn),pc=ct.querySelector('.pdf-viewer-canvas');
             if(!fc||!pc)continue;
-            const pg=await pdfDoc.getPage(pn),vp=pg.getViewport({scale:1});
-            const pwm=vp.width*0.352778,phm=vp.height*0.352778;
-            const mc=document.createElement('canvas');mc.width=pc.width;mc.height=pc.height;
-            const ctx=mc.getContext('2d');ctx.drawImage(pc,0,0);
-            const fdu=fc.toDataURL({format:'png',multiplier:1});
-            const fi=await new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.src=fdu;});
-            ctx.drawImage(fi,0,0);
-            const fd=mc.toDataURL('image/jpeg',0.95);
-            if(!first)doc.addPage([pwm,phm],pwm>phm?'l':'p');
-            doc.addImage(fd,'JPEG',0,0,pwm,phm);first=false;
+            const page=baseDoc.getPage(pn-1);
+            const pageWidth=page.getWidth();
+            const pageHeight=page.getHeight();
+            // Use fabric canvas dimensions (display space) for correct scaling
+            await drawAnnotations(fc,page,pageWidth,pageHeight,fc.getWidth(),fc.getHeight());
         }
-        doc.save('annotated_document.pdf');
+
+        const pdfBytes=await baseDoc.save({useObjectStreams:false});
+        const blob=new Blob([pdfBytes],{type:'application/pdf'});
+        const saveName = currentFileName ? currentFileName.replace('.pdf', '_annotated.pdf') : 'annotated_document.pdf';
+        const link=document.createElement('a');
+        link.href=URL.createObjectURL(blob);
+        link.download=saveName;
+        link.click();
+        setTimeout(()=>URL.revokeObjectURL(link.href),2000);
+
         showTemporaryMessage("PDF saved!");
         hasUnsavedChanges=false;
     }catch(err){console.error('Save err:',err);showTemporaryMessage(`Error: ${err.message}`);}
@@ -472,42 +728,21 @@ function showTemporaryMessage(m){
     const b=document.getElementById('tempMessageBox');if(!b)return;
     b.textContent=m;b.style.opacity='1';
     if(b._timer)clearTimeout(b._timer);
-    b._timer=setTimeout(()=>b.style.opacity='0',3000);
+    b._timer=setTimeout(()=>b.style.opacity='0',2500);
 }
 
-pdfViewer.addEventListener('wheel',e=>{
-    if(e.shiftKey){
-        e.preventDefault();
-        
-        // Get mouse position relative to viewer
-        const rect = pdfViewer.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-        
-        // Calculate zoom
-        const delta = e.deltaY > 0 ? 0.9 : 1.1;
-        const newZoom = Math.max(0.5, Math.min(3, currentZoom * delta));
-        
-        // Calculate zoom point adjustment
-        const zoomRatio = newZoom / currentZoom;
-        
-        // Adjust pan to zoom towards mouse cursor
-        panOffsetX = mouseX - (mouseX - panOffsetX) * zoomRatio;
-        panOffsetY = mouseY - (mouseY - panOffsetY) * zoomRatio;
-        
-        currentZoom = newZoom;
-        
-        pdfViewer.style.transform = `translate(${panOffsetX}px, ${panOffsetY}px)`;
-        document.querySelectorAll('.pdf-page-container').forEach(c=>c.style.transform=`scale(${currentZoom})`);
-        showTemporaryMessage(`Zoom: ${Math.round(currentZoom*100)}%`);
-    }
-},{passive:false});
+// Track scroll position to update page indicator (fast but lightweight)
+let scrollTicking=false;
+function handleScroll(){
+    if(scrollTicking)return;
+    scrollTicking=true;
+    requestAnimationFrame(()=>{updateVisiblePage();scrollTicking=false;});
+}
+window.addEventListener('scroll', handleScroll, {passive: true});
 
 document.addEventListener('keydown',e=>{
-    // Don't trigger shortcuts if user is typing in a text field
     const isTyping = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable;
     
-    // Check if editing text on canvas
     let isEditingCanvas = false;
     fabricCanvases.forEach(c=>{
         const activeObj = c.getActiveObject();
@@ -518,7 +753,6 @@ document.addEventListener('keydown',e=>{
     
     if(isTyping || isEditingCanvas) return;
     
-    // Tool shortcuts
     if(e.key==='1'){
         e.preventDefault();
         setActiveTool('draw');
@@ -532,7 +766,6 @@ document.addEventListener('keydown',e=>{
         e.preventDefault();
         setActiveTool('select');
     }
-    // Undo/Redo
     else if((e.ctrlKey||e.metaKey)&&e.key==='z' && !e.shiftKey){
         e.preventDefault();
         undo();
@@ -542,7 +775,6 @@ document.addEventListener('keydown',e=>{
     }
 });
 
-// Warn before closing/refreshing if there are unsaved changes
 window.addEventListener('beforeunload', e=>{
     if(hasUnsavedChanges){
         e.preventDefault();
@@ -550,6 +782,7 @@ window.addEventListener('beforeunload', e=>{
         return e.returnValue;
     }
 });
+
 btnLoadPdf.addEventListener('click',()=>{
     if(hasUnsavedChanges&&pdfDoc){
         const confirmed=confirm('This file has unsaved changes. Are you sure you want to replace it? All annotations will be lost.');
@@ -563,14 +796,24 @@ fileInput.addEventListener('change',e=>{
     if(f&&f.type==='application/pdf')loadPDF(f);
     else if(f)showTemporaryMessage("Not a PDF");
 });
+
 document.querySelectorAll('.tool-btn').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.tool)setActiveTool(b.dataset.tool);}));
 btnSavePdf.addEventListener('click',saveAllPagesAsPDF);
 fontSizeInput.addEventListener('input',()=>{currentFontSize=parseInt(fontSizeInput.value)||12;updateSelectedObjectProperties();});
 fontFamilySelect.addEventListener('change',()=>{currentFontFamily=fontFamilySelect.value;updateSelectedObjectProperties();});
-setActiveTool('select');currentFontSize=parseInt(fontSizeInput.value);currentFontFamily=fontFamilySelect.value;
-fontSizeInput.disabled=true;fontFamilySelect.disabled=true;
+setActiveTool('select');
+currentFontSize=parseInt(fontSizeInput.value);
+currentFontFamily=fontFamilySelect.value;
+fontSizeInput.disabled=true;
+fontFamilySelect.disabled=true;
+
+// Safety: warn if pdf-lib failed to load so buttons still work
+if(!window.PDFLib){
+    console.error('PDFLib failed to load; saving disabled.');
+    showTemporaryMessage('Save disabled: pdf-lib missing');
+    btnSavePdf.disabled=true;
+}
 </script>
-</div>
 
 </body>
 </html>
