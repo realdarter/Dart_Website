@@ -1,97 +1,70 @@
-.pdf-page-container {
-    position: relative;
-    margin: 16px auto;
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
-    border-radius: 12px;
-    border: 1px solid rgba(229, 231, 235, 0.6);
-    transition: transform 0.1s ease-out;
-    display: inline-block;
-    background: transparent;
-    padding: 4px;
-    transform-origin: top center;
-}
-
-.pdf-viewer-canvas {
-    display: block;
-    background-color: transparent;
-    position: relative;
-    z-index: 1;
-}
-
-.canvas-container {
-    position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    z-index: 10 !important;
-}
-
-.lower-canvas {
-    position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
-    z-index: 1 !important;
-}
-
-.upper-canvas {
-    position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
-    z-index: 2 !important;
-    cursor: crosshair !important;
-}
-
-.active-tool {
-    background-color: #4f46e5 !important;
-    color: #ffffff !important;
-    box-shadow: 0 4px 10px rgba(79, 70, 229, 0.6);
-}
-
-.tool-btn {
-    transition: all 0.15s ease-in-out;
-    background-color: #e2e8f0;
-    color: #1e293b;
-    font-weight: 600;
-    font-size: 0.95rem;
-    padding: 0.45rem 0.75rem;
-}
-
+/* File input - hidden, triggered by button */
 #fileInput {
     display: none;
 }
 
+/* Toolbar buttons */
+.tool-btn {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #374151;
+    background: #f3f4f6;
+    border: 1px solid #d1d5db;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.tool-btn:hover {
+    background: #e5e7eb;
+}
+
+.tool-btn.active-tool {
+    background: #4f46e5;
+    color: white;
+    border-color: #4338ca;
+}
+
+/* Tool control groups */
 .tool-control-group {
     display: flex;
     align-items: center;
-    padding: 3px 8px;
-    border-radius: 8px;
-    background-color: #fff;
-    border: 1px solid #d1d5db;
-    margin-right: 8px;
+    font-size: 0.875rem;
+    color: #374151;
+    font-weight: 600;
 }
 
-#pdfViewer {
-    transition: transform 0.1s ease-out;
+/* PDF page containers - position:relative is critical for fabric overlay alignment */
+.pdf-page-container {
+    position: relative;
+    margin-bottom: 1.5rem;
+    background: white;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+    border-radius: 0.5rem;
+    overflow: hidden;
 }
 
-body {
-    overflow-x: hidden;
+/* PDF render canvas */
+.pdf-viewer-canvas {
+    display: block;
 }
 
+/* Fabric canvas wrapper - Fabric adds its own wrapper div */
+.pdf-page-container .canvas-container {
+    position: absolute !important;
+    top: 0;
+    left: 0;
+}
+
+/* Filename display */
 .filename-display {
-    max-width: 34vw;
-    min-width: 0;
+    max-width: 200px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    flex-shrink: 1;
 }
 
+/* Page indicator transition */
 #pageIndicator {
-    background: rgba(31, 41, 55, 0.75) !important;
-    opacity: 0;
-    transition: opacity 180ms ease-in-out;
+    transition: opacity 0.2s ease;
 }
