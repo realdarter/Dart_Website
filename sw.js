@@ -54,7 +54,7 @@ self.addEventListener('fetch', event => {
     // For CDN assets and app shell: serve from cache, fall back to network
     const isCached = CDN_ASSETS.includes(url) ||
         event.request.destination === 'document' ||
-        url.endsWith('pdf-annotator.html');
+        url.endsWith('pd.html');
 
     if (isCached) {
         event.respondWith(
@@ -82,7 +82,7 @@ self.addEventListener('fetch', event => {
             }).catch(() => {
                 // Total offline fallback for navigation
                 if (event.request.destination === 'document') {
-                    return caches.match('./pdf-annotator.html');
+                    return caches.match('./pd.html');
                 }
             })
         );

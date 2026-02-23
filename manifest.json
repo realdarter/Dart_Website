@@ -2,7 +2,7 @@
     "name": "DraftAnnotator - PDF Redlining Tool",
     "short_name": "DraftAnnotator",
     "description": "Offline PDF annotation and redlining tool for construction drawings",
-    "start_url": "./pdf-annotator.html",
+    "start_url": "./pdx.html",
     "display": "standalone",
     "background_color": "#f9fafb",
     "theme_color": "#4f46e5",
