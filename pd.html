@@ -48,6 +48,43 @@
             display: flex; align-items: center;
             font-size: 0.75rem; color: #6b7280; font-weight: 600;
         }
+        .toolbar-btn {
+            height: 28px;
+            min-width: 28px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            background: #f9fafb;
+            color: #374151;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 8px;
+            line-height: 1;
+        }
+        .toolbar-btn:hover { background: #e5e7eb; }
+        .toolbar-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+        .toolbar-input {
+            width: 48px;
+            height: 28px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            text-align: center;
+            background: #fff;
+            color: #111827;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+        .toolbar-select {
+            height: 28px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            background: #fff;
+            color: #111827;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0 6px;
+        }
         .pdf-page-container {
             position: relative; margin-bottom: 1.5rem;
             background: white;
@@ -65,12 +102,108 @@
         #pageIndicator { transition: opacity 0.2s ease; }
         .divider { width: 1px; height: 24px; background: #d1d5db; margin: 0 4px; flex-shrink: 0; }
         #sizeSlider { accent-color: #4f46e5; }
-        #customColor { width: 22px; height: 22px; padding: 0; border: 2px solid #d1d5db; border-radius: 50%; cursor: pointer; background: none; }
-        #customColor::-webkit-color-swatch-wrapper { padding: 0; }
-        #customColor::-webkit-color-swatch { border: none; border-radius: 50%; }
+        #customColor { width: 0; height: 0; padding: 0; border: none; position: absolute; opacity: 0; pointer-events: none; }
+        .rainbow-btn {
+            width: 24px; height: 24px; border-radius: 6px; cursor: pointer; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            background: #f3f4f6; border: 1.5px solid #d1d5db;
+            transition: all 0.12s; position: relative; color: #6b7280;
+        }
+        .rainbow-btn:hover { background: #e5e7eb; transform: scale(1.08); color: #374151; }
+        .rainbow-btn.active-color { background: #eef2ff; border-color: #4f46e5; color: #4f46e5; box-shadow: 0 0 0 2px rgba(79,70,229,0.2); }
+        .color-popover {
+            position: fixed;
+            background: #fff; border-radius: 12px; padding: 14px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.05);
+            z-index: 60; width: 240px;
+            opacity: 0; transform: translateY(-6px) scale(0.96); pointer-events: none;
+            transition: opacity 0.15s ease, transform 0.15s ease;
+        }
+        .color-popover.open { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+        .color-popover::before {
+            content: ''; position: absolute; top: -6px; right: var(--arrow-right, 16px);
+            width: 12px; height: 12px; background: #fff;
+            transform: rotate(45deg); box-shadow: -1px -1px 3px rgba(0,0,0,0.06);
+        }
+        .color-popover-wheel { width: 100%; height: 140px; border-radius: 8px; cursor: crosshair; border: 1px solid #e5e7eb; }
+        .color-popover-wheel::-webkit-color-swatch-wrapper { padding: 0; }
+        .color-popover-wheel::-webkit-color-swatch { border: none; border-radius: 7px; }
+        .color-hex-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+        .color-hex-input {
+            flex: 1; height: 32px; border: 1px solid #d1d5db; border-radius: 8px;
+            padding: 0 10px; font-size: 13px; font-weight: 600; font-family: monospace;
+            color: #111827; background: #f9fafb; text-transform: uppercase;
+        }
+        .color-hex-input:focus { outline: none; border-color: #4f46e5; box-shadow: 0 0 0 2px rgba(79,70,229,0.2); }
+        .color-preview-dot {
+            width: 32px; height: 32px; border-radius: 50%; border: 2px solid #e5e7eb; flex-shrink: 0;
+        }
+        .color-popover-swatches { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+        .color-popover-swatches .mini-swatch {
+            width: 20px; height: 20px; border-radius: 50%; cursor: pointer;
+            border: 2px solid transparent; transition: all 0.1s;
+        }
+        .color-popover-swatches .mini-swatch:hover { transform: scale(1.2); border-color: #6b7280; }
+        .eyedropper-btn {
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            width: 100%; height: 32px; border-radius: 8px; cursor: pointer;
+            background: #f3f4f6; border: 1px solid #d1d5db; color: #374151;
+            font-size: 12px; font-weight: 600; transition: all 0.12s; margin-top: 10px;
+        }
+        .eyedropper-btn:hover { background: #e5e7eb; }
+        .eyedropper-btn svg { width: 16px; height: 16px; }
+        .color-section-label {
+            font-size: 10px; font-weight: 700; color: #9ca3af;
+            text-transform: uppercase; letter-spacing: 0.05em; margin: 10px 0 6px;
+        }
+        .recent-colors { display: flex; flex-wrap: wrap; gap: 5px; }
+        .recent-colors .mini-swatch { width: 18px; height: 18px; }
+        .zoom-controls {
+            display: flex; align-items: center; gap: 2px;
+        }
+        .zoom-btn {
+            width: 28px; height: 28px; border-radius: 6px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            background: #f3f4f6; border: 1px solid #d1d5db; color: #374151;
+            font-size: 16px; font-weight: 700; transition: all 0.12s;
+        }
+        .zoom-btn:hover { background: #e5e7eb; }
+        .zoom-btn svg { width: 16px; height: 16px; }
+        .zoom-level {
+            font-size: 11px; font-weight: 700; color: #6b7280;
+            min-width: 38px; text-align: center; user-select: none;
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
+
+<!-- Save progress overlay -->
+<div id="saveOverlay" class="fixed inset-0 z-50 hidden" style="background:rgba(0,0,0,0.4);backdrop-filter:blur(3px);">
+    <div class="fixed top-1/2 left-1/2" style="transform:translate(-50%,-50%);width:100%;max-width:420px;padding:0 1rem;">
+        <div style="background:#fff;border-radius:16px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);overflow:hidden;">
+            <!-- Green top accent bar -->
+            <div style="height:4px;background:linear-gradient(90deg,#10b981,#059669);"></div>
+            <div style="padding:20px 24px 16px;">
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+                    <div id="saveSpinner" style="width:36px;height:36px;border-radius:50%;border:3px solid #d1fae5;border-top-color:#059669;animation:spin 0.7s linear infinite;flex-shrink:0;"></div>
+                    <div style="min-width:0;">
+                        <div id="saveTitle" style="font-weight:700;font-size:15px;color:#111827;">Saving PDF...</div>
+                        <div id="saveStep" style="font-size:12px;color:#6b7280;margin-top:2px;">Preparing document</div>
+                    </div>
+                </div>
+                <!-- Progress bar -->
+                <div style="width:100%;height:10px;background:#f3f4f6;border-radius:999px;overflow:hidden;">
+                    <div id="saveBar" style="height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg,#10b981,#059669);transition:width 0.35s ease-out;"></div>
+                </div>
+                <div style="display:flex;justify-content:space-between;margin-top:6px;">
+                    <span id="savePercent" style="font-size:11px;color:#9ca3af;font-weight:600;">0%</span>
+                    <span id="savePageInfo" style="font-size:11px;color:#9ca3af;font-weight:600;"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<style>@keyframes spin{to{transform:rotate(360deg);}}</style>
 
 <!-- Loading bar -->
 <div id="loadingOverlay" class="fixed top-24 inset-x-0 z-30 hidden">
@@ -158,13 +291,14 @@
         <div class="divider"></div>
 
         <!-- Color picker -->
-        <div class="flex items-center gap-1">
+        <div class="flex items-center gap-1" style="position:relative;">
             <div class="color-swatch active-color" data-color="#ef4444" style="background:#ef4444" title="Red"></div>
             <div class="color-swatch" data-color="#3b82f6" style="background:#3b82f6" title="Blue"></div>
             <div class="color-swatch" data-color="#22c55e" style="background:#22c55e" title="Green"></div>
             <div class="color-swatch" data-color="#000000" style="background:#000000" title="Black"></div>
             <div class="color-swatch" data-color="#f97316" style="background:#f97316" title="Orange"></div>
             <input type="color" id="customColor" value="#ef4444" title="Custom color">
+            <div class="rainbow-btn" id="rainbowBtn" title="More colors"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="2"/><circle cx="17.5" cy="10.5" r="2"/><circle cx="8.5" cy="7.5" r="2"/><circle cx="6.5" cy="12.5" r="2"/><path d="M12 2a10 10 0 000 20c1.1 0 2-.9 2-2v-.5c0-.5-.2-1-.5-1.3a1.4 1.4 0 011-2.3H16a8 8 0 00-4-15.6z"/></svg></div>
         </div>
 
         <div class="divider"></div>
@@ -187,8 +321,62 @@
                 <option value="monospace">Mono</option>
             </select>
         </div>
+
+        <div class="divider"></div>
+
+        <div class="tool-control-group gap-1 hidden" id="arrowModeGroup">
+            <span>Arrow</span>
+            <select id="arrowModeSelect" class="toolbar-select" title="Arrow mode for tool 5 / A">
+                <option value="single">Single</option>
+                <option value="double">Double</option>
+                <option value="note">Arrow + Text</option>
+            </select>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="tool-control-group gap-1 hidden" id="pageNavGroup">
+            <button id="btnPrevPage" type="button" class="toolbar-btn" title="Previous page">&lt;</button>
+            <input id="pageJumpInput" type="number" min="1" value="1" class="toolbar-input" title="Go to page">
+            <span>/ <span id="pageJumpTotal">0</span></span>
+            <button id="btnNextPage" type="button" class="toolbar-btn" title="Next page">&gt;</button>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Zoom controls -->
+        <div class="zoom-controls" id="zoomControls">
+            <button type="button" class="zoom-btn" id="btnZoomOut" title="Zoom out (Ctrl+-)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+            <span class="zoom-level" id="zoomLevel">100%</span>
+            <button type="button" class="zoom-btn" id="btnZoomIn" title="Zoom in (Ctrl++)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+            <button type="button" class="zoom-btn" id="btnZoomFit" title="Fit to width" style="margin-left:2px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg>
+            </button>
+        </div>
     </div>
 </header>
+
+<!-- Color popover (fixed position, outside toolbar overflow) -->
+<div class="color-popover" id="colorPopover">
+    <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Custom Color</div>
+    <input type="color" id="popoverWheel" class="color-popover-wheel" value="#ef4444">
+    <div class="color-hex-row">
+        <div class="color-preview-dot" id="colorPreviewDot" style="background:#ef4444;"></div>
+        <input type="text" id="hexInput" class="color-hex-input" value="#EF4444" maxlength="7" placeholder="#000000" spellcheck="false">
+    </div>
+    <button type="button" class="eyedropper-btn" id="eyedropperBtn" title="Pick color from screen">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.71 5.63l-2.34-2.34a1 1 0 00-1.41 0l-3.12 3.12-1.23-1.21a1 1 0 00-1.42 0L10 6.41l1.42 1.42L9.13 10.1 3.71 15.54a1 1 0 000 1.41l3.34 3.34a1 1 0 001.41 0l5.44-5.42 2.27-2.29 1.42 1.42 1.21-1.21a1 1 0 000-1.42l-1.23-1.21 3.14-3.12a1 1 0 000-1.41zM7.05 18.88L5.12 16.95l5.07-5.07 1.93 1.93-5.07 5.07z"/></svg>
+        Pick from screen
+    </button>
+    <div class="color-section-label" id="recentColorsLabel" style="display:none;">Recent</div>
+    <div class="recent-colors" id="recentColors"></div>
+    <div class="color-section-label">Palette</div>
+    <div class="color-popover-swatches" id="popoverSwatches"></div>
+</div>
 
 <div class="flex">
 <!-- Left Sidebar -->
@@ -240,11 +428,11 @@
 </aside>
 
 <!-- Main Content -->
-<div class="flex-1 ml-64 mt-[88px] pr-6">
+<div class="flex-1 ml-64 mt-[88px] pr-3">
 
 <input type="file" id="fileInput" accept=".pdf,application/pdf">
 
-<main class="max-w-full mx-auto p-4">
+<main class="max-w-full mx-auto p-3">
     <div id="pdfViewer" class="flex flex-col items-center">
         <div id="loadingMessage" class="text-center text-gray-600 p-12 bg-white rounded-xl shadow-md mt-10" style="display:none;">
             <div class="animate-spin rounded-full h-10 w-10 border-t-4 border-b-4 border-indigo-600 mx-auto mb-4"></div>
@@ -295,6 +483,13 @@ const btnUndo=document.getElementById('btnUndo'),btnRedo=document.getElementById
 const fontFamilySelect=document.getElementById('fontFamilySelect');
 const sizeSlider=document.getElementById('sizeSlider'),sizeNumber=document.getElementById('sizeNumber'),sizeLabel=document.getElementById('sizeLabel');
 const customColorInput=document.getElementById('customColor');
+const arrowModeGroup=document.getElementById('arrowModeGroup');
+const arrowModeSelect=document.getElementById('arrowModeSelect');
+const pageNavGroup=document.getElementById('pageNavGroup');
+const pageJumpInput=document.getElementById('pageJumpInput');
+const pageJumpTotal=document.getElementById('pageJumpTotal');
+const btnPrevPage=document.getElementById('btnPrevPage');
+const btnNextPage=document.getElementById('btnNextPage');
 const loadingOverlay=document.getElementById('loadingOverlay');
 const fabricCanvases=new Map();
 const pageSizeMap=new Map();
@@ -302,12 +497,29 @@ const savedStateByPage=new Map();
 const historyStack=[];
 let historyPointer=-1;
 
-const PAGE_SCALE_ADJUST=0.9;
+const PAGE_SCALE_ADJUST=0.98;
+const ARROW_MODE_OPTIONS=['single','double','note'];
+const PREF_KEY_ARROW_MODE='draftannotator.arrow.mode';
+const PREF_KEY_RECENT_COLORS='draftannotator.recentColors';
 let defaultPageSize={w:900,h:1200};
+let arrowMode='single';
+let zoomFactor=1.0; // 1.0 = fit-to-width (100%)
 
 const TOOL_NAMES={select:'Select',draw:'Pencil',line:'Line',arrow:'Arrow',rect:'Rectangle',circle:'Circle',text:'Text',highlight:'Highlight',cloud:'Rev Cloud'};
 const SHAPE_TOOLS=['line','arrow','rect','circle','cloud'];
 const DRAW_TOOLS=['draw','highlight'];
+
+function loadArrowModePreference(){
+    try{
+        const saved=localStorage.getItem(PREF_KEY_ARROW_MODE);
+        if(saved&&ARROW_MODE_OPTIONS.includes(saved))arrowMode=saved;
+    }catch(e){}
+    if(arrowModeSelect)arrowModeSelect.value=arrowMode;
+}
+
+function persistArrowModePreference(){
+    try{localStorage.setItem(PREF_KEY_ARROW_MODE,arrowMode);}catch(e){}
+}
 
 // ─── HISTORY SYSTEM ─────────────────────────────────
 function getSerializedCanvasState(c){
@@ -380,6 +592,7 @@ function undo(){
         recomputeUnsavedChanges();
     },(o,obj)=>{if(o.annotationType)obj.annotationType=o.annotationType;});
     currentVisiblePage=entry.pageNum;
+    updatePageIndicator();
     showMsg("Undo");
 }
 
@@ -398,6 +611,7 @@ function redo(){
         recomputeUnsavedChanges();
     },(o,obj)=>{if(o.annotationType)obj.annotationType=o.annotationType;});
     currentVisiblePage=entry.pageNum;
+    updatePageIndicator();
     showMsg("Redo");
 }
 
@@ -477,6 +691,7 @@ function setActiveTool(t){
     const isTxt=t==='text'||t==='select';
     fontFamilySelect.disabled=!isTxt;
     document.getElementById('fontControlsGroup').style.display=isTxt?'flex':'none';
+    if(arrowModeGroup)arrowModeGroup.classList.toggle('hidden',t!=='arrow');
     syncSizeControl();
     showMsg(TOOL_NAMES[t]||t);
 }
@@ -485,6 +700,17 @@ function setColor(color){
     currentColor=color;
     document.querySelectorAll('.color-swatch').forEach(s=>s.classList.toggle('active-color',s.dataset.color===color));
     customColorInput.value=color;
+    // Sync popover controls
+    const pw=document.getElementById('popoverWheel');
+    const hi=document.getElementById('hexInput');
+    const pd=document.getElementById('colorPreviewDot');
+    const rb=document.getElementById('rainbowBtn');
+    if(pw)pw.value=color;
+    if(hi)hi.value=color.toUpperCase();
+    if(pd)pd.style.background=color;
+    // If this color isn't a preset swatch, highlight rainbow button instead
+    const isPreset=[...document.querySelectorAll('.color-swatch')].some(s=>s.dataset.color===color);
+    if(rb)rb.classList.toggle('active-color',!isPreset);
     // Update draw brush if active
     if(activeTool==='draw'){
         fabricCanvases.forEach(c=>{
@@ -526,6 +752,53 @@ function handleSizeChange(val){
 
 // ─── SHAPE DRAWING SYSTEM ───────────────────────────
 let shapeStart=null,tempShape=null,isShapeDrawing=false,shapeCanvas=null;
+
+function createArrowGroup(x1,y1,x2,y2,mode='single'){
+    const angle=Math.atan2(y2-y1,x2-x1);
+    const baseAngle=(angle*180/Math.PI)+90;
+    const baseLine=new fabric.Line([x1,y1,x2,y2],{
+        strokeWidth:currentStrokeWidth,
+        stroke:currentColor,
+        fill:currentColor,
+        selectable:false,
+        evented:false
+    });
+    const arrowParts=[baseLine];
+    const tipOptions={
+        originX:'center',
+        originY:'center',
+        width:15,
+        height:15,
+        fill:currentColor,
+        stroke:currentColor,
+        selectable:false,
+        evented:false
+    };
+    arrowParts.push(new fabric.Triangle({
+        ...tipOptions,
+        left:x2,
+        top:y2,
+        angle:baseAngle
+    }));
+    if(mode==='double'){
+        arrowParts.push(new fabric.Triangle({
+            ...tipOptions,
+            left:x1,
+            top:y1,
+            angle:baseAngle+180
+        }));
+    }
+    return {
+        group:new fabric.Group(arrowParts,{
+            selectable:true,
+            evented:true,
+            hasControls:true,
+            hasBorders:true,
+            annotationType:mode==='double'?'doubleArrow':'arrow'
+        }),
+        angle
+    };
+}
 
 function handleShapeStart(c,o){
     if(!SHAPE_TOOLS.includes(activeTool))return;
@@ -623,15 +896,33 @@ function handleShapeEnd(){
             break;
         case 'arrow':{
             const x1=tempShape.x1,y1=tempShape.y1,x2=tempShape.x2,y2=tempShape.y2;
-            const angle=Math.atan2(y2-y1,x2-x1);
-            const head=new fabric.Triangle({
-                left:x2,top:y2,originX:'center',originY:'center',width:15,height:15,
-                fill:currentColor,stroke:currentColor,angle:(angle*180/Math.PI)+90,
-                selectable:false,evented:false
-            });
-            shapeCanvas.add(head);
-            const grp=new fabric.Group([tempShape,head],{selectable:true,evented:true,hasControls:true,hasBorders:true});
-            shapeCanvas.remove(tempShape);shapeCanvas.remove(head);shapeCanvas.add(grp);
+            shapeCanvas.remove(tempShape);
+            const arrowStyle=arrowMode==='double'?'double':'single';
+            const builtArrow=createArrowGroup(x1,y1,x2,y2,arrowStyle);
+            shapeCanvas.add(builtArrow.group);
+            if(arrowMode==='note'){
+                const labelOffset=Math.max(18,currentFontSize);
+                const cosA=Math.cos(builtArrow.angle);
+                const sinA=Math.sin(builtArrow.angle);
+                const pointsLeft=cosA<-0.1;
+                const labelX=x2+(cosA*labelOffset);
+                const labelY=y2+(sinA*labelOffset);
+                const txt=new fabric.IText('',{
+                    left:labelX,
+                    top:labelY-(currentFontSize*0.6),
+                    originX:pointsLeft?'right':'left',
+                    fontFamily:currentFontFamily,
+                    fontSize:currentFontSize,
+                    fill:currentColor,
+                    selectable:true,
+                    evented:true
+                });
+                shapeCanvas.add(txt);
+                shapeCanvas.setActiveObject(txt);
+                txt.enterEditing();
+                hasPendingTextEdits=true;
+                hasUnsavedChanges=true;
+            }
             break;
         }
         case 'rect':
@@ -649,6 +940,15 @@ function handleShapeEnd(){
         }
     }
     shapeCanvas._suppressHistory=false;
+    // Keep all objects locked while in shape/draw mode — only select tool unlocks them
+    if(activeTool!=='select'){
+        shapeCanvas.forEachObject(o=>{
+            // Skip text that's being actively edited (arrow+note mode)
+            if(o.type==='i-text'&&o.isEditing)return;
+            o.selectable=false;o.evented=false;
+        });
+        shapeCanvas.discardActiveObject();
+    }
     shapeCanvas.renderAll();
     saveCanvasState(shapeCanvas);
     tempShape=null;shapeStart=null;shapeCanvas=null;
@@ -693,6 +993,42 @@ function updatePageIndicator(){
             setTimeout(()=>pi.classList.add('hidden'),220);
         },4000);
     }else{pi.classList.add('hidden');}
+    updatePageNavControls();
+}
+
+function updatePageNavControls(){
+    if(!pageNavGroup||!pageJumpInput||!pageJumpTotal||!btnPrevPage||!btnNextPage)return;
+    const hasPdf=numPages>0;
+    pageNavGroup.classList.toggle('hidden',!hasPdf);
+    if(!hasPdf)return;
+    const pageValue=Math.max(1,Math.min(numPages,currentVisiblePage||1));
+    pageJumpInput.value=String(pageValue);
+    pageJumpInput.min='1';
+    pageJumpInput.max=String(numPages);
+    pageJumpTotal.textContent=String(numPages);
+    btnPrevPage.disabled=pageValue<=1;
+    btnNextPage.disabled=pageValue>=numPages;
+}
+
+function goToPage(pageNum){
+    if(!numPages)return;
+    const parsed=parseInt(pageNum,10);
+    const target=Math.max(1,Math.min(numPages,Number.isFinite(parsed)?parsed:currentVisiblePage));
+    const pageContainer=document.querySelector(`[data-page-num="${target}"]`);
+    currentVisiblePage=target;
+    updatePageIndicator();
+    if(pageContainer){
+        if(!renderedPages.has(target)&&!renderingPages.has(target))renderPage(target,pageContainer);
+        pageContainer.scrollIntoView({behavior:'smooth',block:'start'});
+    }
+}
+
+function getTargetPageWidth(viewportWidth){
+    const viewerWidth=Math.max(320,pdfViewer.clientWidth-12);
+    const fallbackWidth=Math.max(320,window.innerWidth-280);
+    const targetWidth=(viewerWidth||fallbackWidth);
+    const calculatedScale=targetWidth/viewportWidth;
+    return Math.max(0.25,Math.min(5,calculatedScale*PAGE_SCALE_ADJUST));
 }
 
 function updateVisiblePage(){
@@ -717,8 +1053,7 @@ async function renderPage(n,containerOverride=null){
         markedRendering=true;
         const pg=await pdfDoc.getPage(n),vp=pg.getViewport({scale:1});
         if(baseScale===null){
-            const w=Math.min(window.innerWidth-40-256,1600);
-            baseScale=w/vp.width*PAGE_SCALE_ADJUST;
+            baseScale=getTargetPageWidth(vp.width);
         }
         scale=baseScale;
         const dpr=window.devicePixelRatio||1;
@@ -759,7 +1094,8 @@ async function renderPage(n,containerOverride=null){
 
         fc.on('path:created',e=>{
             if(e.path){
-                e.path.set({selectable:true,evented:true,hasControls:true,hasBorders:true});
+                const canSelect=activeTool==='select';
+                e.path.set({selectable:canSelect,evented:canSelect,hasControls:true,hasBorders:true});
                 if(activeTool==='highlight') e.path.set({opacity:0.35});
             }
             saveCanvasState(fc);
@@ -778,6 +1114,11 @@ async function renderPage(n,containerOverride=null){
             empties.forEach(o=>fc.remove(o));
             fc._suppressHistory=false;
             if(empties.length>0)fc.renderAll();
+            // Re-lock objects if not in select mode
+            if(activeTool!=='select'){
+                fc.forEachObject(o=>{o.selectable=false;o.evented=false;});
+                fc.discardActiveObject();fc.renderAll();
+            }
             saveCanvasState(fc);
         });
 
@@ -785,9 +1126,12 @@ async function renderPage(n,containerOverride=null){
             fc.lastModifiedTime=Date.now();
             if(o.e.button===2){
                 isPanning=true;panStartX=o.e.clientX-panOffsetX;panStartY=o.e.clientY-panOffsetY;fc.defaultCursor='grabbing';
+            }else if(SHAPE_TOOLS.includes(activeTool)||DRAW_TOOLS.includes(activeTool)){
+                // In drawing/shape mode: ignore existing objects, always start new shape
+                if(o.target){fc.discardActiveObject();fc.renderAll();}
+                if(SHAPE_TOOLS.includes(activeTool)) handleShapeStart(fc,o);
             }else if(!o.target){
                 if(activeTool==='text') handleTextPlacement(fc,o);
-                else if(SHAPE_TOOLS.includes(activeTool)) handleShapeStart(fc,o);
             }
         });
 
@@ -806,6 +1150,7 @@ async function renderPage(n,containerOverride=null){
         cont.addEventListener('contextmenu',e=>e.preventDefault());
 
         fabricCanvases.set(n,fc);
+        fc._renderZoom=zoomFactor; // remember zoom at render time for viewport transform
         // Lightweight init for this canvas only (no showMsg, no reconfiguring all canvases)
         fc.selection=activeTool==='select';
         fc.isDrawingMode=DRAW_TOOLS.includes(activeTool);
@@ -837,7 +1182,7 @@ async function renderAllPages(){
     pageRenderObserver=null;renderedPages.clear();renderingPages.clear();fabricCanvases.clear();
     savedStateByPage.clear();historyStack.length=0;historyPointer=-1;hasPendingTextEdits=false;hasUnsavedChanges=false;
     isPanning=false;panOffsetX=0;panOffsetY=0;pdfViewer.style.transform='translate(0,0)';
-    currentVisiblePage=1;baseScale=null;
+    currentVisiblePage=1;baseScale=null;zoomFactor=1.0;updateZoomDisplay();
     let ph=defaultPageSize.h||800;
     const eager=Math.min(2,numPages);
 
@@ -918,6 +1263,7 @@ function canvasToPngBytes(canvas){
 
 function getExportSourceCanvas(fc,multiplier=1,includeText=true){
     // Prefer fabric's export path so vectors/text are rerendered at higher resolution.
+    // NOTE: caller must reset viewport transform to identity before calling this
     const hiddenText=[];
     if(fc&&!includeText){
         fc.getObjects().forEach(o=>{
@@ -1062,10 +1408,44 @@ function drawTextObjectsAsVector(fc,page,rot,box,pdfHelpers){
     fc.getObjects().forEach(drawOne);
 }
 
+// ─── SAVE PROGRESS OVERLAY ──────────────────────────
+function updateSaveProgress(percent,step,pageInfo){
+    const overlay=document.getElementById('saveOverlay');
+    const bar=document.getElementById('saveBar');
+    const pct=document.getElementById('savePercent');
+    const stepEl=document.getElementById('saveStep');
+    const pageEl=document.getElementById('savePageInfo');
+    const titleEl=document.getElementById('saveTitle');
+    const spinnerEl=document.getElementById('saveSpinner');
+    if(!overlay)return;
+    overlay.classList.remove('hidden');
+    if(bar)bar.style.width=percent+'%';
+    if(pct)pct.textContent=Math.round(percent)+'%';
+    if(stepEl)stepEl.textContent=step||'';
+    if(pageEl)pageEl.textContent=pageInfo||'';
+    if(percent>=100){
+        if(titleEl)titleEl.textContent='Done!';
+        if(spinnerEl){spinnerEl.style.animation='none';spinnerEl.style.borderColor='#059669';spinnerEl.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;margin:5px;"><polyline points="20 6 9 17 4 12"/></svg>';}
+    }
+}
+function hideSaveOverlay(){
+    const overlay=document.getElementById('saveOverlay');
+    if(overlay)overlay.classList.add('hidden');
+    // Reset spinner for next save
+    const spinnerEl=document.getElementById('saveSpinner');
+    const titleEl=document.getElementById('saveTitle');
+    if(spinnerEl){spinnerEl.style.animation='spin 0.7s linear infinite';spinnerEl.style.borderColor='';spinnerEl.style.borderTopColor='';spinnerEl.innerHTML='';spinnerEl.style.cssText='width:36px;height:36px;border-radius:50%;border:3px solid #d1fae5;border-top-color:#059669;animation:spin 0.7s linear infinite;flex-shrink:0;';}
+    if(titleEl)titleEl.textContent='Saving PDF...';
+}
+// Allow UI to repaint between heavy sync steps
+function yieldToUI(){return new Promise(r=>setTimeout(r,0));}
+
 async function saveAllPagesAsPDF(){
     if(!numPages||!fabricCanvases.size){showMsg("Load PDF first");return;}
     if(!originalPdfBytes){showMsg("Missing source PDF");return;}
-    btnSavePdf.disabled=true;btnSavePdf.textContent='Generating...';
+    btnSavePdf.disabled=true;btnSavePdf.textContent='Saving...';
+    updateSaveProgress(0,'Preparing annotations...');
+    await yieldToUI();
     try{
         // Commit in-progress text edits before flattening to image.
         fabricCanvases.forEach(c=>{
@@ -1074,10 +1454,15 @@ async function saveAllPagesAsPDF(){
         });
         syncPendingTextEdits();
 
+        updateSaveProgress(5,'Loading PDF document...');
+        await yieldToUI();
         const {PDFDocument,StandardFonts,rgb,degrees}=window.PDFLib;
         let baseDoc;
         try{baseDoc=await PDFDocument.load(originalPdfBytes);}
         catch(e){baseDoc=await PDFDocument.load(originalPdfBytes,{ignoreEncryption:true});}
+
+        updateSaveProgress(12,'Embedding fonts...');
+        await yieldToUI();
         const helv=await baseDoc.embedFont(StandardFonts.Helvetica);
         const helvBold=await baseDoc.embedFont(StandardFonts.HelveticaBold);
         const timesRoman=await baseDoc.embedFont(StandardFonts.TimesRoman);
@@ -1091,13 +1476,30 @@ async function saveAllPagesAsPDF(){
             if(fontFamily==='monospace')return isBold?courierBold:courier;
             return isBold?helvBold:helv;
         }
+
+        updateSaveProgress(20,'Processing pages...');
+        await yieldToUI();
         const conts=Array.from(document.querySelectorAll('.pdf-page-container')).sort((a,b)=>parseInt(a.dataset.pageNum)-parseInt(b.dataset.pageNum));
+        const totalPages=conts.length;
 
         let stampedPages=0;
-        for(const ct of conts){
+        for(let ci=0;ci<conts.length;ci++){
+            const ct=conts[ci];
             const pn=parseInt(ct.dataset.pageNum,10),fc=fabricCanvases.get(pn);
+            const pageProgress=20+((ci/totalPages)*65);
+            updateSaveProgress(pageProgress,`Stamping page ${pn}...`,`Page ${ci+1} of ${totalPages}`);
+            await yieldToUI();
             if(!fc)continue;
             if(fc.getObjects().length===0)continue;
+
+            // Temporarily reset zoom viewport transform so export uses base coordinates
+            const savedVpt=fc.viewportTransform.slice();
+            const savedW=fc.getWidth(),savedH=fc.getHeight();
+            const renderZoom=fc._renderZoom||1;
+            fc.setViewportTransform([1,0,0,1,0,0]);
+            fc.setWidth(savedW/(zoomFactor/renderZoom));
+            fc.setHeight(savedH/(zoomFactor/renderZoom));
+
             const page=baseDoc.getPage(pn-1);
             const jsPage=await pdfDoc.getPage(pn);
             const view=jsPage.view||[0,0,page.getWidth(),page.getHeight()];
@@ -1120,10 +1522,19 @@ async function saveAllPagesAsPDF(){
                 }
             }
             drawTextObjectsAsVector(fc,page,rot,{x:boxX,y:boxY,w:boxW,h:boxH},{degrees,rgb,pickFont});
+
+            // Restore zoom viewport transform
+            fc.setWidth(savedW);fc.setHeight(savedH);
+            fc.setViewportTransform(savedVpt);
             stampedPages++;
         }
 
+        updateSaveProgress(88,'Compiling final PDF...');
+        await yieldToUI();
         const pdfBytes=await baseDoc.save({useObjectStreams:false});
+
+        updateSaveProgress(96,'Preparing download...');
+        await yieldToUI();
         const blob=new Blob([pdfBytes],{type:'application/pdf'});
         const sourceName=currentFileName||'annotated_document';
         const saveName=/\.pdf$/i.test(sourceName)?sourceName.replace(/\.pdf$/i,'_annotated.pdf'):`${sourceName}_annotated.pdf`;
@@ -1137,8 +1548,15 @@ async function saveAllPagesAsPDF(){
         });
         hasPendingTextEdits=false;
         recomputeUnsavedChanges();
-        showMsg(stampedPages>0?"PDF saved!":"PDF saved (no annotations found)");
-    }catch(err){console.error('Save err:',err);showMsg(`Error: ${err.message}`);}
+
+        updateSaveProgress(100,stampedPages>0?'PDF saved successfully!':'Saved (no annotations found)','');
+        await yieldToUI();
+        setTimeout(hideSaveOverlay,1200);
+    }catch(err){
+        console.error('Save err:',err);
+        hideSaveOverlay();
+        showMsg(`Error: ${err.message}`);
+    }
     finally{btnSavePdf.disabled=false;btnSavePdf.textContent='Save PDF';}
 }
 
@@ -1211,6 +1629,11 @@ document.addEventListener('keydown',e=>{
     }
 
     const key=e.key.toLowerCase();
+    // Zoom shortcuts: Ctrl+= / Ctrl+- / Ctrl+0
+    if((e.ctrlKey||e.metaKey)&&(key==='='||key==='+')){e.preventDefault();zoomIn();return;}
+    if((e.ctrlKey||e.metaKey)&&key==='-'){e.preventDefault();zoomOut();return;}
+    if((e.ctrlKey||e.metaKey)&&key==='0'){e.preventDefault();zoomFit();return;}
+
     if((e.ctrlKey||e.metaKey)&&key==='z'&&!e.shiftKey){e.preventDefault();undo();}
     else if((e.ctrlKey||e.metaKey)&&(key==='y'||(key==='z'&&e.shiftKey))){e.preventDefault();redo();}
 });
@@ -1243,18 +1666,280 @@ document.querySelectorAll('.tool-btn').forEach(b=>b.addEventListener('click',()=
 btnSavePdf.addEventListener('click',saveAllPagesAsPDF);
 btnUndo.addEventListener('click',undo);
 btnRedo.addEventListener('click',redo);
+if(btnPrevPage)btnPrevPage.addEventListener('click',()=>goToPage(currentVisiblePage-1));
+if(btnNextPage)btnNextPage.addEventListener('click',()=>goToPage(currentVisiblePage+1));
+if(pageJumpInput){
+    pageJumpInput.addEventListener('change',()=>goToPage(pageJumpInput.value));
+    pageJumpInput.addEventListener('keydown',e=>{
+        if(e.key==='Enter'){
+            e.preventDefault();
+            goToPage(pageJumpInput.value);
+        }
+    });
+}
+if(arrowModeSelect){
+    arrowModeSelect.addEventListener('change',()=>{
+        const selected=arrowModeSelect.value;
+        if(ARROW_MODE_OPTIONS.includes(selected)){
+            arrowMode=selected;
+            persistArrowModePreference();
+            showMsg(`Arrow mode: ${arrowModeSelect.options[arrowModeSelect.selectedIndex].text}`);
+        }
+    });
+}
 sizeSlider.addEventListener('input',()=>handleSizeChange(sizeSlider.value));
 sizeNumber.addEventListener('input',()=>handleSizeChange(sizeNumber.value));
 fontFamilySelect.addEventListener('change',()=>{currentFontFamily=fontFamilySelect.value;updateSelectedObjectProperties();});
 
 // Color swatch clicks
-document.querySelectorAll('.color-swatch').forEach(s=>s.addEventListener('click',()=>setColor(s.dataset.color)));
+document.querySelectorAll('.color-swatch').forEach(s=>s.addEventListener('click',()=>{setColor(s.dataset.color);addRecentColor(s.dataset.color);closeColorPopover();}));
 customColorInput.addEventListener('input',()=>setColor(customColorInput.value));
 
+// ─── RECENT COLORS ──────────────────────────────────
+function getRecentColors(){
+    try{const raw=localStorage.getItem(PREF_KEY_RECENT_COLORS);return raw?JSON.parse(raw):[];}
+    catch(e){return [];}
+}
+function addRecentColor(color){
+    const c=color.toLowerCase();
+    let recent=getRecentColors();
+    recent=recent.filter(r=>r!==c);
+    recent.unshift(c);
+    if(recent.length>12)recent.length=12;
+    try{localStorage.setItem(PREF_KEY_RECENT_COLORS,JSON.stringify(recent));}catch(e){}
+    renderRecentColors();
+}
+function renderRecentColors(){
+    const container=document.getElementById('recentColors');
+    const label=document.getElementById('recentColorsLabel');
+    if(!container)return;
+    const recent=getRecentColors();
+    container.innerHTML='';
+    if(recent.length===0){if(label)label.style.display='none';return;}
+    if(label)label.style.display='block';
+    recent.forEach(c=>{
+        const s=document.createElement('div');
+        s.className='mini-swatch';
+        s.style.background=c;
+        if(c==='#ffffff')s.style.border='2px solid #d1d5db';
+        s.addEventListener('click',()=>{setColor(c);closeColorPopover();});
+        container.appendChild(s);
+    });
+}
+
+// ─── COLOR POPOVER ──────────────────────────────────
+(function initColorPopover(){
+    const rainbowBtn=document.getElementById('rainbowBtn');
+    const popover=document.getElementById('colorPopover');
+    const popoverWheel=document.getElementById('popoverWheel');
+    const hexInput=document.getElementById('hexInput');
+    const previewDot=document.getElementById('colorPreviewDot');
+    const swatchContainer=document.getElementById('popoverSwatches');
+    const eyedropperBtn=document.getElementById('eyedropperBtn');
+    if(!rainbowBtn||!popover)return;
+
+    // Hide eyedropper if browser doesn't support it
+    if(!window.EyeDropper&&eyedropperBtn)eyedropperBtn.style.display='none';
+
+    // Extended palette swatches
+    const extraColors=[
+        '#ef4444','#f97316','#f59e0b','#eab308','#84cc16','#22c55e',
+        '#14b8a6','#06b6d4','#3b82f6','#6366f1','#8b5cf6','#a855f7',
+        '#d946ef','#ec4899','#f43f5e','#78716c','#64748b','#000000',
+        '#ffffff','#991b1b','#9a3412','#854d0e','#166534','#1e3a5f',
+        '#312e81','#581c87','#831843','#44403c'
+    ];
+    extraColors.forEach(c=>{
+        const s=document.createElement('div');
+        s.className='mini-swatch';
+        s.style.background=c;
+        if(c==='#ffffff')s.style.border='2px solid #d1d5db';
+        s.addEventListener('click',()=>{setColor(c);addRecentColor(c);closeColorPopover();});
+        swatchContainer.appendChild(s);
+    });
+
+    // Render recent colors on init
+    renderRecentColors();
+
+    // Toggle popover — position it below the rainbow button
+    rainbowBtn.addEventListener('click',(e)=>{
+        e.stopPropagation();
+        renderRecentColors();
+        if(!popover.classList.contains('open')){
+            const rect=rainbowBtn.getBoundingClientRect();
+            popover.style.top=(rect.bottom+8)+'px';
+            // Align right edge with button right edge, clamp to viewport
+            let left=rect.right-240;
+            if(left<8)left=8;
+            popover.style.left=left+'px';
+            // Position the arrow to point at the button
+            const arrowRight=rect.right-left-10;
+            popover.style.setProperty('--arrow-right',Math.max(12,arrowRight)+'px');
+        }
+        popover.classList.toggle('open');
+    });
+
+    // Eyedropper
+    if(eyedropperBtn&&window.EyeDropper){
+        eyedropperBtn.addEventListener('click',async()=>{
+            try{
+                const dropper=new EyeDropper();
+                const result=await dropper.open();
+                const c=result.sRGBHex;
+                setColor(c);
+                addRecentColor(c);
+                closeColorPopover();
+            }catch(e){/* user cancelled */}
+        });
+    }
+
+    // Color wheel input
+    popoverWheel.addEventListener('input',()=>{
+        const c=popoverWheel.value;
+        hexInput.value=c.toUpperCase();
+        previewDot.style.background=c;
+        currentColor=c;
+        customColorInput.value=c;
+        document.querySelectorAll('.color-swatch').forEach(s=>s.classList.remove('active-color'));
+        rainbowBtn.classList.add('active-color');
+        if(activeTool==='draw'){fabricCanvases.forEach(fc=>{if(fc.freeDrawingBrush)fc.freeDrawingBrush.color=c;});}
+    });
+    popoverWheel.addEventListener('change',()=>{addRecentColor(popoverWheel.value);});
+
+    // Hex input
+    hexInput.addEventListener('keydown',(e)=>{
+        if(e.key==='Enter'){
+            e.preventDefault();
+            applyHex();
+        }
+    });
+    hexInput.addEventListener('blur',applyHex);
+    function applyHex(){
+        let v=hexInput.value.trim();
+        if(!v.startsWith('#'))v='#'+v;
+        if(/^#[0-9a-fA-F]{6}$/.test(v)){
+            setColor(v);addRecentColor(v);
+        } else if(/^#[0-9a-fA-F]{3}$/.test(v)){
+            v='#'+v[1]+v[1]+v[2]+v[2]+v[3]+v[3];
+            setColor(v);addRecentColor(v);
+        }
+        hexInput.value=currentColor.toUpperCase();
+    }
+
+    // Close on outside click
+    document.addEventListener('click',(e)=>{
+        if(!popover.contains(e.target)&&e.target!==rainbowBtn){
+            closeColorPopover();
+        }
+    });
+    // Prevent popover clicks from closing
+    popover.addEventListener('click',(e)=>e.stopPropagation());
+})();
+function closeColorPopover(){
+    const p=document.getElementById('colorPopover');
+    if(p)p.classList.remove('open');
+}
+
+// ─── ZOOM CONTROLS ──────────────────────────────────
+const zoomLevelEl=document.getElementById('zoomLevel');
+const ZOOM_STEP=0.15;
+const ZOOM_MIN=0.25;
+const ZOOM_MAX=3.0;
+
+function updateZoomDisplay(){
+    if(zoomLevelEl)zoomLevelEl.textContent=Math.round(zoomFactor*100)+'%';
+}
+
+async function applyZoom(newFactor){
+    // Clamp
+    newFactor=Math.max(ZOOM_MIN,Math.min(ZOOM_MAX,newFactor));
+    if(Math.abs(newFactor-zoomFactor)<0.001)return;
+    zoomFactor=newFactor;
+    updateZoomDisplay();
+    if(!pdfDoc)return;
+
+    // Remember scroll position relative to document
+    const scrollEl=document.documentElement;
+    let scrollRatio=0;
+    if(scrollEl.scrollHeight>0)scrollRatio=scrollEl.scrollTop/scrollEl.scrollHeight;
+
+    // Recalculate baseScale from the first page's original viewport
+    const pg1=await pdfDoc.getPage(1);
+    const vp1=pg1.getViewport({scale:1});
+    const fitScale=getTargetPageWidth(vp1.width);
+    baseScale=fitScale*zoomFactor;
+    scale=baseScale;
+
+    // Re-render all currently rendered pages at new scale
+    const dpr=window.devicePixelRatio||1;
+    for(const [n,fc] of fabricCanvases){
+        const pg=await pdfDoc.getPage(n);
+        const rv=pg.getViewport({scale:scale*dpr});
+        const dw=rv.width/dpr,dh=rv.height/dpr;
+
+        // Resize container
+        const cont=document.querySelector(`[data-page-num="${n}"]`);
+        if(cont){cont.style.width=`${dw}px`;cont.style.height=`${dh}px`;cont.style.minHeight=`${dh}px`;}
+
+        // Re-render PDF canvas at zoomed resolution
+        const pdfC=cont?cont.querySelector('.pdf-viewer-canvas'):null;
+        if(pdfC){
+            pdfC.width=rv.width;pdfC.height=rv.height;
+            pdfC.style.width=`${dw}px`;pdfC.style.height=`${dh}px`;
+            await pg.render({canvasContext:pdfC.getContext('2d'),viewport:rv}).promise;
+        }
+
+        // Use viewport transform — objects keep their original coordinates,
+        // Fabric handles mouse mapping automatically, strokes stay consistent
+        const renderZoom=fc._renderZoom||1;
+        const vptRatio=zoomFactor/renderZoom;
+        fc.setWidth(dw);fc.setHeight(dh);
+        fc.setViewportTransform([vptRatio,0,0,vptRatio,0,0]);
+        fc.renderAll();
+        pageSizeMap.set(n,{w:dw,h:dh});
+    }
+
+    // Also resize placeholder (non-rendered) containers
+    for(let i=1;i<=numPages;i++){
+        if(!fabricCanvases.has(i)){
+            const cont=document.querySelector(`[data-page-num="${i}"]`);
+            if(cont){
+                const pg=await pdfDoc.getPage(i);
+                const rv=pg.getViewport({scale:scale*dpr});
+                const dw=rv.width/dpr,dh=rv.height/dpr;
+                cont.style.width=`${dw}px`;cont.style.minHeight=`${dh}px`;
+            }
+        }
+    }
+
+    // Restore scroll position
+    if(scrollEl)scrollEl.scrollTop=scrollRatio*scrollEl.scrollHeight;
+}
+
+function zoomIn(){applyZoom(zoomFactor+ZOOM_STEP);}
+function zoomOut(){applyZoom(zoomFactor-ZOOM_STEP);}
+function zoomFit(){applyZoom(1.0);}
+
+document.getElementById('btnZoomIn').addEventListener('click',zoomIn);
+document.getElementById('btnZoomOut').addEventListener('click',zoomOut);
+document.getElementById('btnZoomFit').addEventListener('click',zoomFit);
+
+// Ctrl+scroll and Ctrl+/- zoom
+document.addEventListener('wheel',(e)=>{
+    if(e.ctrlKey||e.metaKey){
+        e.preventDefault();
+        const delta=e.deltaY>0?-ZOOM_STEP:ZOOM_STEP;
+        applyZoom(zoomFactor+delta);
+    }
+},{passive:false});
+
 // ─── INIT ───────────────────────────────────────────
+loadArrowModePreference();
 setActiveTool('select');
 currentFontFamily=fontFamilySelect.value;
 syncSizeControl();
+updatePageNavControls();
+updateZoomDisplay();
 
 if(!window.PDFLib){
     console.error('PDFLib failed to load');
