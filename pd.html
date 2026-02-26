@@ -941,13 +941,14 @@ function handleShapeEnd(){
     }
     shapeCanvas._suppressHistory=false;
     // Keep all objects locked while in shape/draw mode — only select tool unlocks them
+    // But preserve active text editing (arrow+note mode)
     if(activeTool!=='select'){
+        let hasEditingText=false;
         shapeCanvas.forEachObject(o=>{
-            // Skip text that's being actively edited (arrow+note mode)
-            if(o.type==='i-text'&&o.isEditing)return;
+            if(o.type==='i-text'&&o.isEditing){hasEditingText=true;return;}
             o.selectable=false;o.evented=false;
         });
-        shapeCanvas.discardActiveObject();
+        if(!hasEditingText)shapeCanvas.discardActiveObject();
     }
     shapeCanvas.renderAll();
     saveCanvasState(shapeCanvas);
