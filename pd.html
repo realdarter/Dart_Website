@@ -834,8 +834,7 @@ function setArrowGroupAppearance(group,strokeWidth,color){
     }));
 
     group.dirty=true;
-    if(group._calcBounds)group._calcBounds();
-    if(group._updateObjectsCoords)group._updateObjectsCoords();
+    if(group._calcBounds)group._calcBounds(true); // true = only update width/height, NOT position
     group.setCoords();
 }
 
