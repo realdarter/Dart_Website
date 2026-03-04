@@ -2,7 +2,7 @@ name: Sync PDF editor from pdf-analyzer
 
 on:
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "*/30 * * * *"
 
 permissions:
   contents: write
