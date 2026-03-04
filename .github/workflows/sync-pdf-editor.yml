@@ -2,8 +2,13 @@ name: Sync PDF editor from pdf-analyzer
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/sync-pdf-editor.yml
   schedule:
-    - cron: "*/30 * * * *"
+    - cron: "17,47 * * * *"
 
 permissions:
   contents: write
