@@ -8,6 +8,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="description" content="Offline PDF annotation and redlining tool">
     <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='80' fill='%234f46e5'/><text x='256' y='340' font-size='280' font-weight='bold' fill='white' text-anchor='middle' font-family='system-ui'>DA</text></svg>">
     <title>DraftAnnotator - PDF Redlining Tool</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -128,6 +129,7 @@
         .color-popover-wheel { width: 100%; height: 140px; border-radius: 8px; cursor: crosshair; border: 1px solid #e5e7eb; }
         .color-popover-wheel::-webkit-color-swatch-wrapper { padding: 0; }
         .color-popover-wheel::-webkit-color-swatch { border: none; border-radius: 7px; }
+        .color-popover-wheel::-moz-color-swatch { border: none; border-radius: 7px; }
         .color-hex-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
         .color-hex-input {
             flex: 1; height: 32px; border: 1px solid #d1d5db; border-radius: 8px;
@@ -157,7 +159,11 @@
             text-transform: uppercase; letter-spacing: 0.05em; margin: 10px 0 6px;
         }
         .recent-colors { display: flex; flex-wrap: wrap; gap: 5px; }
-        .recent-colors .mini-swatch { width: 18px; height: 18px; }
+        .recent-colors .mini-swatch {
+            width: 18px; height: 18px; border-radius: 50%; cursor: pointer;
+            border: 2px solid transparent; transition: all 0.1s;
+        }
+        .recent-colors .mini-swatch:hover { transform: scale(1.2); border-color: #6b7280; }
         .zoom-controls {
             display: flex; align-items: center; gap: 2px;
         }
@@ -312,6 +318,15 @@
 
         <div class="divider"></div>
 
+        <div class="tool-control-group gap-1 hidden" id="fillControlsGroup">
+            <span>Fill</span>
+            <input type="checkbox" id="fillToggle" title="Enable fill for rectangles/circles/clouds">
+            <input type="range" id="fillOpacitySlider" min="0" max="100" value="25" style="width:56px;accent-color:#4f46e5;" title="Fill opacity">
+            <input type="number" id="fillOpacityNumber" min="0" max="100" value="25" class="w-10 text-xs rounded px-1 py-0.5 border border-gray-300 text-center" title="Fill opacity percent">
+        </div>
+
+        <div class="divider" id="fillDivider"></div>
+
         <!-- Font family (visible for text/select) -->
         <div class="tool-control-group gap-1" id="fontControlsGroup">
             <span>Ft</span>
@@ -334,6 +349,17 @@
         </div>
 
         <div class="divider"></div>
+
+        <div class="tool-control-group gap-1 hidden" id="highlightModeGroup">
+            <span>HL</span>
+            <select id="highlightModeSelect" class="toolbar-select" title="Highlight mode">
+                <option value="pen">Pen</option>
+                <option value="box">Box</option>
+                <option value="ellipse">Ellipse</option>
+            </select>
+        </div>
+
+        <div class="divider" id="highlightModeDivider"></div>
 
         <div class="tool-control-group gap-1 hidden" id="pageNavGroup">
             <button id="btnPrevPage" type="button" class="toolbar-btn" title="Previous page">&lt;</button>
@@ -419,8 +445,11 @@
                     <span><b>9 / V</b> Cloud</span><span></span>
                     <span class="col-span-2 mt-1 border-t border-indigo-200 pt-1"><b>Ctrl+Z</b> Undo</span>
                     <span class="col-span-2"><b>Ctrl+Y</b> Redo</span>
+                    <span class="col-span-2"><b>Ctrl+S</b> Save</span>
                     <span class="col-span-2"><b>Del</b> Delete</span>
+                    <span class="col-span-2"><b>Esc</b> Deselect</span>
                     <span class="col-span-2"><b>Right-click</b> Pan</span>
+                    <span class="col-span-2"><b>Ctrl+scroll</b> Zoom</span>
                 </div>
             </div>
         </div>
@@ -454,6 +483,7 @@
 </div>
 
 </div>
+</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
@@ -461,6 +491,10 @@
 <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 
 <script>
+window.addEventListener('unhandledrejection',e=>{
+    console.error('Unhandled rejection:',e.reason);
+});
+
 // ─── STATE ──────────────────────────────────────────
 let pdfDoc=null,numPages=0,scale=1.5,activeTool='select';
 let currentFontSize=16,currentFontFamily='sans-serif';
@@ -476,15 +510,25 @@ const renderingPages=new Set();
 let pageRenderObserver=null;
 let baseScale=null;
 let currentVisiblePage=1;
+const pageViewportCache=new Map();
 
 const pdfViewer=document.getElementById('pdfViewer'),fileInput=document.getElementById('fileInput');
 const btnLoadPdf=document.getElementById('btnLoadPdf'),btnSavePdf=document.getElementById('btnSavePdf');
 const btnUndo=document.getElementById('btnUndo'),btnRedo=document.getElementById('btnRedo');
+const fontControlsGroup=document.getElementById('fontControlsGroup');
 const fontFamilySelect=document.getElementById('fontFamilySelect');
 const sizeSlider=document.getElementById('sizeSlider'),sizeNumber=document.getElementById('sizeNumber'),sizeLabel=document.getElementById('sizeLabel');
+const fillControlsGroup=document.getElementById('fillControlsGroup');
+const fillDivider=document.getElementById('fillDivider');
+const fillToggle=document.getElementById('fillToggle');
+const fillOpacitySlider=document.getElementById('fillOpacitySlider');
+const fillOpacityNumber=document.getElementById('fillOpacityNumber');
 const customColorInput=document.getElementById('customColor');
 const arrowModeGroup=document.getElementById('arrowModeGroup');
 const arrowModeSelect=document.getElementById('arrowModeSelect');
+const highlightModeGroup=document.getElementById('highlightModeGroup');
+const highlightModeDivider=document.getElementById('highlightModeDivider');
+const highlightModeSelect=document.getElementById('highlightModeSelect');
 const pageNavGroup=document.getElementById('pageNavGroup');
 const pageJumpInput=document.getElementById('pageJumpInput');
 const pageJumpTotal=document.getElementById('pageJumpTotal');
@@ -499,15 +543,24 @@ let historyPointer=-1;
 
 const PAGE_SCALE_ADJUST=0.98;
 const ARROW_MODE_OPTIONS=['single','double','note'];
+const HIGHLIGHT_MODE_OPTIONS=['pen','box','ellipse'];
 const PREF_KEY_ARROW_MODE='draftannotator.arrow.mode';
+const PREF_KEY_HIGHLIGHT_MODE='draftannotator.highlight.mode';
 const PREF_KEY_RECENT_COLORS='draftannotator.recentColors';
 let defaultPageSize={w:900,h:1200};
 let arrowMode='single';
+let highlightMode='pen';
 let zoomFactor=1.0; // 1.0 = fit-to-width (100%)
+let shapeFillEnabled=false;
+let shapeFillOpacity=25;
+let activeContextPageNum=1;
+const activePdfRenderTasks=new Map();
+const pendingPdfRefreshPages=new Set();
+let queuedZoomFactor=null;
+let zoomWorkerActive=false;
 
 const TOOL_NAMES={select:'Select',draw:'Pencil',line:'Line',arrow:'Arrow',rect:'Rectangle',circle:'Circle',text:'Text',highlight:'Highlight',cloud:'Rev Cloud'};
 const SHAPE_TOOLS=['line','arrow','rect','circle','cloud'];
-const DRAW_TOOLS=['draw','highlight'];
 
 function loadArrowModePreference(){
     try{
@@ -519,6 +572,18 @@ function loadArrowModePreference(){
 
 function persistArrowModePreference(){
     try{localStorage.setItem(PREF_KEY_ARROW_MODE,arrowMode);}catch(e){}
+}
+
+function loadHighlightModePreference(){
+    try{
+        const saved=localStorage.getItem(PREF_KEY_HIGHLIGHT_MODE);
+        if(saved&&HIGHLIGHT_MODE_OPTIONS.includes(saved))highlightMode=saved;
+    }catch(e){}
+    if(highlightModeSelect)highlightModeSelect.value=highlightMode;
+}
+
+function persistHighlightModePreference(){
+    try{localStorage.setItem(PREF_KEY_HIGHLIGHT_MODE,highlightMode);}catch(e){}
 }
 
 // ─── HISTORY SYSTEM ─────────────────────────────────
@@ -542,7 +607,7 @@ function recomputeUnsavedChanges(){
     syncPendingTextEdits();
     if(hasPendingTextEdits){hasUnsavedChanges=true;return;}
     for(const [pn,c] of fabricCanvases){
-        const currentState=c._lastSavedState||getSerializedCanvasState(c);
+        const currentState=getSerializedCanvasState(c);
         const savedState=savedStateByPage.get(pn);
         if(savedState!==undefined&&currentState!==savedState){
             hasUnsavedChanges=true;
@@ -552,9 +617,11 @@ function recomputeUnsavedChanges(){
     hasUnsavedChanges=false;
 }
 
+const MAX_HISTORY=200;
 function pushHistoryEntry(pageNum,state){
     historyStack.splice(historyPointer+1);
     historyStack.push({pageNum,state});
+    if(historyStack.length>MAX_HISTORY){historyStack.splice(0,historyStack.length-MAX_HISTORY);}
     historyPointer=historyStack.length-1;
 }
 
@@ -582,7 +649,7 @@ function undo(){
     historyPointer--;
     const entry=historyStack[historyPointer];
     const canvas=fabricCanvases.get(entry.pageNum);
-    if(!canvas){showMsg("Nothing to undo");return;}
+    if(!canvas){historyPointer++;showMsg("Nothing to undo");return;}
     canvas._restoring=true;
     canvas.loadFromJSON(entry.state,()=>{
         canvas._restoring=false;
@@ -590,8 +657,10 @@ function undo(){
         canvas.forEachObject(o=>{o.selectable=activeTool==='select';o.evented=activeTool==='select';});
         canvas._lastSavedState=entry.state;
         recomputeUnsavedChanges();
+        syncSizeControl();
     },(o,obj)=>{if(o.annotationType)obj.annotationType=o.annotationType;});
     currentVisiblePage=entry.pageNum;
+    activeContextPageNum=entry.pageNum;
     updatePageIndicator();
     showMsg("Undo");
 }
@@ -601,7 +670,7 @@ function redo(){
     historyPointer++;
     const entry=historyStack[historyPointer];
     const canvas=fabricCanvases.get(entry.pageNum);
-    if(!canvas){showMsg("Nothing to redo");return;}
+    if(!canvas){historyPointer--;showMsg("Nothing to redo");return;}
     canvas._restoring=true;
     canvas.loadFromJSON(entry.state,()=>{
         canvas._restoring=false;
@@ -609,10 +678,238 @@ function redo(){
         canvas.forEachObject(o=>{o.selectable=activeTool==='select';o.evented=activeTool==='select';});
         canvas._lastSavedState=entry.state;
         recomputeUnsavedChanges();
+        syncSizeControl();
     },(o,obj)=>{if(o.annotationType)obj.annotationType=o.annotationType;});
     currentVisiblePage=entry.pageNum;
+    activeContextPageNum=entry.pageNum;
     updatePageIndicator();
     showMsg("Redo");
+}
+
+function clampNumber(v,min,max){
+    return Math.max(min,Math.min(max,v));
+}
+
+function hexToRgbChannels(hex){
+    const raw=(hex||'').trim();
+    const full=/^#([0-9a-f]{6})$/i.exec(raw);
+    if(full){
+        return {
+            r:parseInt(full[1].slice(0,2),16),
+            g:parseInt(full[1].slice(2,4),16),
+            b:parseInt(full[1].slice(4,6),16)
+        };
+    }
+    const short=/^#([0-9a-f]{3})$/i.exec(raw);
+    if(short){
+        return {
+            r:parseInt(short[1][0]+short[1][0],16),
+            g:parseInt(short[1][1]+short[1][1],16),
+            b:parseInt(short[1][2]+short[1][2],16)
+        };
+    }
+    return null;
+}
+
+function rgbaFromHex(hex,alpha){
+    const rgb=hexToRgbChannels(hex);
+    if(!rgb)return 'transparent';
+    const a=clampNumber(Number(alpha)||0,0,1);
+    return `rgba(${rgb.r},${rgb.g},${rgb.b},${a.toFixed(3)})`;
+}
+
+function isTextObject(obj){
+    return !!obj&&(obj.type==='i-text'||obj.type==='text'||obj.type==='textbox');
+}
+
+function isArrowGroup(obj){
+    return !!obj&&obj.type==='group'&&(obj.annotationType==='arrow'||obj.annotationType==='doubleArrow');
+}
+
+function supportsFillObject(obj){
+    if(!obj)return false;
+    if(isHighlightAreaObject(obj))return false;
+    if(obj.type==='rect'||obj.type==='ellipse')return true;
+    if(obj.type==='path'&&obj.annotationType==='cloud')return true;
+    return false;
+}
+
+function getCurrentShapeFill(colorOverride=null){
+    if(!shapeFillEnabled)return 'transparent';
+    return rgbaFromHex(colorOverride||currentColor,shapeFillOpacity/100);
+}
+
+function getHighlightBrushColor(colorOverride=null){
+    return rgbaFromHex(colorOverride||currentColor,0.32);
+}
+
+function getHighlightAreaFillColor(colorOverride=null){
+    return rgbaFromHex(colorOverride||currentColor,0.24);
+}
+
+function getHighlightAreaStrokeColor(colorOverride=null){
+    return rgbaFromHex(colorOverride||currentColor,0.6);
+}
+
+function getHighlightBrushWidth(){
+    return clampNumber(currentStrokeWidth*3,6,48);
+}
+
+function isHighlightAreaObject(obj){
+    return !!obj&&(obj.annotationType==='highlightBox'||obj.annotationType==='highlightEllipse');
+}
+
+function isHighlightPenObject(obj){
+    return !!obj&&obj.annotationType==='highlightPen';
+}
+
+function clearActiveSelectionsExcept(pageNum){
+    for(const [pn,canvas] of fabricCanvases){
+        if(pn===pageNum)continue;
+        if(canvas.getActiveObject()){
+            canvas.discardActiveObject();
+            canvas.requestRenderAll();
+        }
+    }
+}
+
+function getActiveSelectionContext(){
+    const contextPageCandidates=[activeContextPageNum,currentVisiblePage];
+    for(const pageNum of contextPageCandidates){
+        if(!Number.isFinite(pageNum))continue;
+        const canvas=fabricCanvases.get(pageNum);
+        if(!canvas)continue;
+        const activeObj=canvas.getActiveObject();
+        if(!activeObj)continue;
+        const objects=activeObj.type==='activeSelection'?activeObj.getObjects():[activeObj];
+        return {canvas,activeObj,objects,pageNum};
+    }
+    return null;
+}
+
+function getStrokeWidthForObject(obj){
+    if(!obj)return currentStrokeWidth;
+    if(isArrowGroup(obj)){
+        const line=(obj._objects||[]).find(p=>p.type==='line');
+        return line&&Number.isFinite(line.strokeWidth)?line.strokeWidth:currentStrokeWidth;
+    }
+    return Number.isFinite(obj.strokeWidth)?obj.strokeWidth:currentStrokeWidth;
+}
+
+function getControlStrokeWidthForObject(obj){
+    if(isHighlightPenObject(obj)){
+        return clampNumber(Math.round(getStrokeWidthForObject(obj)/3),1,12);
+    }
+    return clampNumber(Math.round(getStrokeWidthForObject(obj)),1,12);
+}
+
+function computeArrowHeadSize(length,strokeWidth){
+    const sw=Math.max(1,Number(strokeWidth)||1);
+    const preferred=(sw*3.2)+4;
+    const maxByLength=Math.max(8,(Number(length)||0)*0.35);
+    return clampNumber(preferred,6,maxByLength);
+}
+
+function setArrowGroupAppearance(group,strokeWidth,color){
+    if(!isArrowGroup(group))return;
+    const parts=group._objects||[];
+    const line=parts.find(p=>p.type==='line');
+    if(!line)return;
+    const tips=parts.filter(p=>p.type==='triangle');
+    const sw=clampNumber(Number(strokeWidth)||currentStrokeWidth,1,72);
+    const x1=Number(line.x1)||0;
+    const y1=Number(line.y1)||0;
+    const x2=Number(line.x2)||0;
+    const y2=Number(line.y2)||0;
+    const len=Math.hypot(x2-x1,y2-y1);
+    const headSize=computeArrowHeadSize(len,sw);
+
+    line.set({strokeWidth:sw,stroke:color,fill:color});
+    tips.forEach(t=>t.set({
+        width:headSize,
+        height:headSize,
+        fill:color,
+        stroke:color,
+        strokeWidth:Math.max(1,sw*0.35)
+    }));
+
+    group.dirty=true;
+    if(group._calcBounds)group._calcBounds();
+    if(group._updateObjectsCoords)group._updateObjectsCoords();
+    group.setCoords();
+}
+
+function setObjectStrokeWidth(obj,width){
+    if(!obj)return;
+    if(isArrowGroup(obj)){
+        const line=(obj._objects||[]).find(p=>p.type==='line');
+        const strokeColor=(line&&line.stroke)||currentColor;
+        setArrowGroupAppearance(obj,width,strokeColor);
+        return;
+    }
+    if(isHighlightPenObject(obj)){
+        obj.set('strokeWidth',clampNumber(width*3,6,48));
+        return;
+    }
+    if(Object.prototype.hasOwnProperty.call(obj,'strokeWidth'))obj.set('strokeWidth',width);
+}
+
+function setObjectColor(obj,color){
+    if(!obj)return;
+    if(isTextObject(obj)){
+        obj.set({fill:color});
+        return;
+    }
+    if(isHighlightPenObject(obj)){
+        obj.set({stroke:getHighlightBrushColor(color)});
+        return;
+    }
+    if(isHighlightAreaObject(obj)){
+        obj.set({stroke:getHighlightAreaStrokeColor(color),fill:getHighlightAreaFillColor(color)});
+        return;
+    }
+    if(isArrowGroup(obj)){
+        setArrowGroupAppearance(obj,getStrokeWidthForObject(obj),color);
+        return;
+    }
+    if(Object.prototype.hasOwnProperty.call(obj,'stroke'))obj.set('stroke',color);
+    if(supportsFillObject(obj)&&shapeFillEnabled)obj.set('fill',getCurrentShapeFill(color));
+}
+
+function setObjectFillFromCurrentStyle(obj){
+    if(!supportsFillObject(obj))return;
+    obj.set('fill',getCurrentShapeFill());
+}
+
+function getFillStateFromObject(obj){
+    if(!supportsFillObject(obj))return null;
+    const fill=(obj.fill||'').toString().trim().toLowerCase();
+    if(!fill||fill==='transparent')return {enabled:false,opacity:0};
+    const rgba=/rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*([0-9]*\.?[0-9]+)\s*\)/i.exec(fill);
+    if(rgba){
+        const alpha=clampNumber(parseFloat(rgba[1]),0,1);
+        return {enabled:true,opacity:Math.round(alpha*100)};
+    }
+    return {enabled:true,opacity:100};
+}
+
+function getSizeControlMode(context){
+    if(context&&context.objects.length>0){
+        const allText=context.objects.every(isTextObject);
+        return allText?'text':'stroke';
+    }
+    return activeTool==='text'?'text':'stroke';
+}
+
+function applyTextStyleToObject(obj,fontSize,fontFamily){
+    if(!isTextObject(obj))return;
+    const styleUpdate={fontSize,fontFamily};
+    if(obj.type==='i-text'&&obj.isEditing&&obj.selectionStart!==obj.selectionEnd&&obj.setSelectionStyles){
+        obj.setSelectionStyles(styleUpdate,obj.selectionStart,obj.selectionEnd);
+    }
+    obj.set(styleUpdate);
+    if(obj.initDimensions)obj.initDimensions();
+    obj.setCoords();
 }
 
 // ─── REVISION CLOUD GENERATOR ───────────────────────
@@ -639,14 +936,34 @@ function createRevisionCloud(x,y,w,h){
     d+='Z';
     return new fabric.Path(d,{
         stroke:currentColor,strokeWidth:currentStrokeWidth,
-        fill:'transparent',selectable:true,evented:true,
-        hasControls:true,hasBorders:true
+        fill:getCurrentShapeFill(currentColor),selectable:true,evented:true,
+        strokeUniform:true,
+        hasControls:true,hasBorders:true,annotationType:'cloud'
     });
 }
 
 // ─── TOOL MANAGEMENT ────────────────────────────────
+function isShapeModeTool(tool=activeTool){
+    if(SHAPE_TOOLS.includes(tool))return true;
+    if(tool!=='highlight')return false;
+    return highlightMode==='box'||highlightMode==='ellipse';
+}
+
+function isFreeDrawModeTool(tool=activeTool){
+    if(tool==='draw')return true;
+    if(tool!=='highlight')return false;
+    return highlightMode==='pen';
+}
+
+function configureHighlightBrush(canvas){
+    if(!canvas)return;
+    canvas.freeDrawingBrush=new fabric.PencilBrush(canvas);
+    canvas.freeDrawingBrush.color=getHighlightBrushColor();
+    canvas.freeDrawingBrush.width=getHighlightBrushWidth();
+}
+
 function getCursorForTool(t){
-    return (DRAW_TOOLS.includes(t)||SHAPE_TOOLS.includes(t))?'crosshair':t==='text'?'text':'default';
+    return (isFreeDrawModeTool(t)||isShapeModeTool(t))?'crosshair':t==='text'?'text':'default';
 }
 
 function stopPanning(){
@@ -671,27 +988,25 @@ function setActiveTool(t){
 
     fabricCanvases.forEach(c=>{
         c.selection=t==='select';
-        c.isDrawingMode=DRAW_TOOLS.includes(t);
+        c.isDrawingMode=isFreeDrawModeTool(t);
 
         if(t==='draw'){
             c.freeDrawingBrush=new fabric.PencilBrush(c);
             c.freeDrawingBrush.color=currentColor;
             c.freeDrawingBrush.width=currentStrokeWidth;
-        }else if(t==='highlight'){
-            c.freeDrawingBrush=new fabric.PencilBrush(c);
-            c.freeDrawingBrush.color='rgba(250,204,21,0.4)';
-            c.freeDrawingBrush.width=20;
+        }else if(t==='highlight'&&highlightMode==='pen'){
+            configureHighlightBrush(c);
         }
 
         c.defaultCursor=getCursorForTool(t);
         c.forEachObject(o=>{o.selectable=t==='select';o.evented=t==='select';});
+        if(t!=='select')c.discardActiveObject();
         c.renderAll();
     });
 
-    const isTxt=t==='text'||t==='select';
-    fontFamilySelect.disabled=!isTxt;
-    document.getElementById('fontControlsGroup').style.display=isTxt?'flex':'none';
     if(arrowModeGroup)arrowModeGroup.classList.toggle('hidden',t!=='arrow');
+    if(highlightModeGroup)highlightModeGroup.classList.toggle('hidden',t!=='highlight');
+    if(highlightModeDivider)highlightModeDivider.style.display=t==='highlight'?'block':'none';
     syncSizeControl();
     showMsg(TOOL_NAMES[t]||t);
 }
@@ -716,50 +1031,156 @@ function setColor(color){
         fabricCanvases.forEach(c=>{
             if(c.freeDrawingBrush) c.freeDrawingBrush.color=color;
         });
+    }else if(activeTool==='highlight'&&highlightMode==='pen'){
+        fabricCanvases.forEach(c=>{
+            if(c.freeDrawingBrush) c.freeDrawingBrush.color=getHighlightBrushColor(color);
+        });
     }
+
+    const context=getActiveSelectionContext();
+    if(context&&context.objects.length>0){
+        context.objects.forEach(obj=>setObjectColor(obj,color));
+        context.canvas.requestRenderAll();
+        saveCanvasState(context.canvas);
+    }
+    syncSizeControl();
 }
 
 // ─── UNIFIED SIZE CONTROL ───────────────────────────
 function syncSizeControl(){
-    const isText=activeTool==='text'||activeTool==='select';
-    if(isText){
+    const context=getActiveSelectionContext();
+    const mode=getSizeControlMode(context);
+    const showTextControls=mode==='text'||activeTool==='text';
+    if(fontControlsGroup)fontControlsGroup.style.display=showTextControls?'flex':'none';
+    fontFamilySelect.disabled=mode!=='text';
+
+    if(mode==='text'){
+        let textSize=currentFontSize;
+        if(context&&context.objects.length>0&&context.objects.every(isTextObject)){
+            const refText=context.objects.find(isTextObject);
+            textSize=clampNumber(parseInt(refText.fontSize,10)||currentFontSize,8,72);
+            currentFontSize=textSize;
+        }
         sizeSlider.min=8;sizeSlider.max=72;sizeSlider.step=1;
-        sizeSlider.value=currentFontSize;sizeNumber.value=currentFontSize;
+        sizeSlider.value=textSize;sizeNumber.value=textSize;
         sizeNumber.min=8;sizeNumber.max=72;
         sizeLabel.textContent='Sz';
     }else{
+        let strokeSize=currentStrokeWidth;
+        if(context&&context.objects.length>0){
+            const ref=context.objects.find(o=>!isTextObject(o));
+            if(ref){
+                strokeSize=getControlStrokeWidthForObject(ref);
+                currentStrokeWidth=strokeSize;
+            }
+        }
         sizeSlider.min=1;sizeSlider.max=12;sizeSlider.step=1;
-        sizeSlider.value=currentStrokeWidth;sizeNumber.value=currentStrokeWidth;
+        sizeSlider.value=strokeSize;sizeNumber.value=strokeSize;
         sizeNumber.min=1;sizeNumber.max=12;
         sizeLabel.textContent='Wt';
     }
-}
 
-function handleSizeChange(val){
-    const isText=activeTool==='text'||activeTool==='select';
-    if(isText){
-        currentFontSize=parseInt(val)||12;
-        sizeSlider.value=currentFontSize;sizeNumber.value=currentFontSize;
-        updateSelectedObjectProperties();
-    }else{
-        currentStrokeWidth=parseInt(val)||3;
-        sizeSlider.value=currentStrokeWidth;sizeNumber.value=currentStrokeWidth;
-        if(activeTool==='draw'){
-            fabricCanvases.forEach(c=>{if(c.freeDrawingBrush)c.freeDrawingBrush.width=currentStrokeWidth;});
+    const hasFillSelection=!!(context&&context.objects.some(supportsFillObject));
+    const showFillControls=activeTool==='rect'||activeTool==='circle'||activeTool==='cloud'||hasFillSelection;
+    if(fillControlsGroup)fillControlsGroup.classList.toggle('hidden',!showFillControls);
+    if(fillDivider)fillDivider.style.display=showFillControls?'block':'none';
+    if(showFillControls){
+        if(hasFillSelection){
+            const refFillObj=context.objects.find(supportsFillObject);
+            const fillState=getFillStateFromObject(refFillObj);
+            if(fillState){
+                shapeFillEnabled=fillState.enabled;
+                shapeFillOpacity=clampNumber(fillState.opacity,0,100);
+            }
+        }
+        if(fillToggle)fillToggle.checked=shapeFillEnabled;
+        if(fillOpacitySlider){
+            fillOpacitySlider.value=shapeFillOpacity;
+            fillOpacitySlider.disabled=!shapeFillEnabled;
+        }
+        if(fillOpacityNumber){
+            fillOpacityNumber.value=shapeFillOpacity;
+            fillOpacityNumber.disabled=!shapeFillEnabled;
         }
     }
 }
 
+function handleSizeChange(val){
+    const context=getActiveSelectionContext();
+    const mode=getSizeControlMode(context);
+    if(mode==='text'){
+        currentFontSize=clampNumber(parseInt(val,10)||12,8,72);
+        sizeSlider.value=currentFontSize;sizeNumber.value=currentFontSize;
+        if(context&&context.objects.length>0){
+            const textObjects=context.objects.filter(isTextObject);
+            if(textObjects.length>0){
+                textObjects.forEach(obj=>applyTextStyleToObject(obj,currentFontSize,currentFontFamily));
+                context.canvas.requestRenderAll();
+                saveCanvasState(context.canvas);
+            }
+        }else{
+            updateSelectedObjectProperties();
+        }
+    }else{
+        currentStrokeWidth=clampNumber(parseInt(val,10)||3,1,12);
+        sizeSlider.value=currentStrokeWidth;sizeNumber.value=currentStrokeWidth;
+        if(context&&context.objects.length>0){
+            const strokeObjects=context.objects.filter(o=>!isTextObject(o));
+            if(strokeObjects.length>0){
+                strokeObjects.forEach(obj=>setObjectStrokeWidth(obj,currentStrokeWidth));
+                context.canvas.requestRenderAll();
+                saveCanvasState(context.canvas);
+            }
+        }
+        if(activeTool==='draw'){
+            fabricCanvases.forEach(c=>{if(c.freeDrawingBrush)c.freeDrawingBrush.width=currentStrokeWidth;});
+        }else if(activeTool==='highlight'&&highlightMode==='pen'){
+            fabricCanvases.forEach(c=>{if(c.freeDrawingBrush)c.freeDrawingBrush.width=getHighlightBrushWidth();});
+        }
+    }
+    syncSizeControl();
+}
+
 // ─── SHAPE DRAWING SYSTEM ───────────────────────────
-let shapeStart=null,tempShape=null,isShapeDrawing=false,shapeCanvas=null;
+function applyCurrentFillStyleToSelection(){
+    const context=getActiveSelectionContext();
+    if(context&&context.objects.length>0){
+        const fillObjects=context.objects.filter(supportsFillObject);
+        if(fillObjects.length>0){
+            fillObjects.forEach(obj=>setObjectFillFromCurrentStyle(obj));
+            context.canvas.requestRenderAll();
+            saveCanvasState(context.canvas);
+        }
+    }
+    syncSizeControl();
+}
+
+function handleFillToggleChange(checked){
+    shapeFillEnabled=!!checked;
+    applyCurrentFillStyleToSelection();
+}
+
+function handleFillOpacityChange(val){
+    shapeFillOpacity=clampNumber(parseInt(val,10)||0,0,100);
+    if(fillOpacitySlider)fillOpacitySlider.value=shapeFillOpacity;
+    if(fillOpacityNumber)fillOpacityNumber.value=shapeFillOpacity;
+    if(shapeFillEnabled)applyCurrentFillStyleToSelection();
+    else syncSizeControl();
+}
+
+let shapeStart=null,tempShape=null,isShapeDrawing=false,shapeCanvas=null,currentShapeKind=null;
 
 function createArrowGroup(x1,y1,x2,y2,mode='single'){
     const angle=Math.atan2(y2-y1,x2-x1);
     const baseAngle=(angle*180/Math.PI)+90;
+    const lineLength=Math.hypot(x2-x1,y2-y1);
+    const headSize=computeArrowHeadSize(lineLength,currentStrokeWidth);
     const baseLine=new fabric.Line([x1,y1,x2,y2],{
         strokeWidth:currentStrokeWidth,
         stroke:currentColor,
         fill:currentColor,
+        strokeLineCap:'round',
+        strokeUniform:true,
         selectable:false,
         evented:false
     });
@@ -767,10 +1188,12 @@ function createArrowGroup(x1,y1,x2,y2,mode='single'){
     const tipOptions={
         originX:'center',
         originY:'center',
-        width:15,
-        height:15,
+        width:headSize,
+        height:headSize,
         fill:currentColor,
         stroke:currentColor,
+        strokeWidth:Math.max(1,currentStrokeWidth*0.35),
+        strokeUniform:true,
         selectable:false,
         evented:false
     };
@@ -788,54 +1211,86 @@ function createArrowGroup(x1,y1,x2,y2,mode='single'){
             angle:baseAngle+180
         }));
     }
-    return {
-        group:new fabric.Group(arrowParts,{
+    const group=new fabric.Group(arrowParts,{
             selectable:true,
             evented:true,
             hasControls:true,
             hasBorders:true,
+            lockScalingX:true,
+            lockScalingY:true,
             annotationType:mode==='double'?'doubleArrow':'arrow'
-        }),
-        angle
-    };
+        });
+    setArrowGroupAppearance(group,currentStrokeWidth,currentColor);
+    return {group,angle};
+}
+
+function getActiveShapeKind(){
+    if(activeTool==='highlight'){
+        if(highlightMode==='box')return 'highlightBox';
+        if(highlightMode==='ellipse')return 'highlightEllipse';
+        return null;
+    }
+    if(SHAPE_TOOLS.includes(activeTool))return activeTool;
+    return null;
 }
 
 function handleShapeStart(c,o){
-    if(!SHAPE_TOOLS.includes(activeTool))return;
+    const shapeKind=getActiveShapeKind();
+    if(!shapeKind)return;
     isShapeDrawing=true;shapeCanvas=c;
+    currentShapeKind=shapeKind;
     const p=c.getPointer(o.e);
     shapeStart={x:p.x,y:p.y};
 
     c._suppressHistory=true;
-    switch(activeTool){
+    switch(shapeKind){
         case 'line':case 'arrow':
             tempShape=new fabric.Line([p.x,p.y,p.x,p.y],{
                 strokeWidth:currentStrokeWidth,stroke:currentColor,fill:currentColor,
-                originX:'center',originY:'center',selectable:false,evented:false
+                originX:'center',originY:'center',selectable:false,evented:false,
+                strokeUniform:true
             });
             c.add(tempShape);
             break;
         case 'rect':
             tempShape=new fabric.Rect({
                 left:p.x,top:p.y,width:0,height:0,
-                stroke:currentColor,strokeWidth:currentStrokeWidth,fill:'transparent',
-                selectable:false,evented:false
+                stroke:currentColor,strokeWidth:currentStrokeWidth,fill:getCurrentShapeFill(currentColor),
+                selectable:false,evented:false,strokeUniform:true
             });
             c.add(tempShape);
             break;
         case 'circle':
             tempShape=new fabric.Ellipse({
                 left:p.x,top:p.y,rx:0,ry:0,
-                stroke:currentColor,strokeWidth:currentStrokeWidth,fill:'transparent',
-                selectable:false,evented:false
+                stroke:currentColor,strokeWidth:currentStrokeWidth,fill:getCurrentShapeFill(currentColor),
+                selectable:false,evented:false,strokeUniform:true
             });
             c.add(tempShape);
             break;
         case 'cloud':
             tempShape=new fabric.Rect({
                 left:p.x,top:p.y,width:0,height:0,
-                stroke:currentColor,strokeWidth:1,fill:'transparent',
-                strokeDashArray:[5,5],selectable:false,evented:false
+                stroke:currentColor,strokeWidth:currentStrokeWidth,fill:getCurrentShapeFill(currentColor),
+                strokeDashArray:[5,5],selectable:false,evented:false,strokeUniform:true
+            });
+            c.add(tempShape);
+            break;
+        case 'highlightBox':
+            tempShape=new fabric.Rect({
+                left:p.x,top:p.y,width:0,height:0,
+                stroke:getHighlightAreaStrokeColor(),strokeWidth:Math.max(1,currentStrokeWidth),
+                fill:getHighlightAreaFillColor(),
+                selectable:false,evented:false,annotationType:'highlightBox',strokeUniform:true
+            });
+            c.add(tempShape);
+            break;
+        case 'highlightEllipse':
+            tempShape=new fabric.Ellipse({
+                left:p.x,top:p.y,rx:0,ry:0,
+                stroke:getHighlightAreaStrokeColor(),strokeWidth:Math.max(1,currentStrokeWidth),
+                fill:getHighlightAreaFillColor(),
+                selectable:false,evented:false,annotationType:'highlightEllipse',strokeUniform:true
             });
             c.add(tempShape);
             break;
@@ -846,17 +1301,17 @@ function handleShapeStart(c,o){
 function handleShapeMove(o){
     if(!isShapeDrawing||!shapeCanvas||!tempShape)return;
     const p=shapeCanvas.getPointer(o.e);
-    switch(activeTool){
+    switch(currentShapeKind){
         case 'line':case 'arrow':
             tempShape.set({x2:p.x,y2:p.y});
             break;
-        case 'rect':case 'cloud':
+        case 'rect':case 'cloud':case 'highlightBox':
             tempShape.set({
                 left:Math.min(shapeStart.x,p.x),top:Math.min(shapeStart.y,p.y),
                 width:Math.abs(p.x-shapeStart.x),height:Math.abs(p.y-shapeStart.y)
             });
             break;
-        case 'circle':
+        case 'circle':case 'highlightEllipse':
             tempShape.set({
                 left:Math.min(shapeStart.x,p.x),top:Math.min(shapeStart.y,p.y),
                 rx:Math.abs(p.x-shapeStart.x)/2,ry:Math.abs(p.y-shapeStart.y)/2
@@ -872,7 +1327,7 @@ function handleShapeEnd(){
 
     // Check minimum size
     let tooSmall=false;
-    if(activeTool==='line'||activeTool==='arrow'){
+    if(currentShapeKind==='line'||currentShapeKind==='arrow'){
         const d=Math.sqrt((tempShape.x2-tempShape.x1)**2+(tempShape.y2-tempShape.y1)**2);
         tooSmall=d<5;
     }else{
@@ -885,12 +1340,12 @@ function handleShapeEnd(){
         shapeCanvas.remove(tempShape);
         shapeCanvas._suppressHistory=false;
         shapeCanvas.renderAll();
-        tempShape=null;shapeStart=null;shapeCanvas=null;
+        tempShape=null;shapeStart=null;shapeCanvas=null;currentShapeKind=null;
         return;
     }
 
     shapeCanvas._suppressHistory=true;
-    switch(activeTool){
+    switch(currentShapeKind){
         case 'line':
             tempShape.set({selectable:true,evented:true,hasControls:true,hasBorders:true});
             break;
@@ -938,6 +1393,10 @@ function handleShapeEnd(){
             shapeCanvas.add(cloud);
             break;
         }
+        case 'highlightBox':
+        case 'highlightEllipse':
+            tempShape.set({selectable:true,evented:true,hasControls:true,hasBorders:true});
+            break;
     }
     shapeCanvas._suppressHistory=false;
     // Keep all objects locked while in shape/draw mode — only select tool unlocks them
@@ -952,12 +1411,13 @@ function handleShapeEnd(){
     }
     shapeCanvas.renderAll();
     saveCanvasState(shapeCanvas);
-    tempShape=null;shapeStart=null;shapeCanvas=null;
+    tempShape=null;shapeStart=null;shapeCanvas=null;currentShapeKind=null;
 }
 
 // ─── TEXT PLACEMENT ─────────────────────────────────
 function handleTextPlacement(c,o){
     if(activeTool!=='text'||o.target||textEditJustExited)return;
+    activeContextPageNum=c._pageNum||currentVisiblePage;
     const p=c.getPointer(o.e);
     const txt=new fabric.IText('',{
         left:p.x,top:p.y,fontFamily:currentFontFamily,fontSize:currentFontSize,
@@ -972,10 +1432,34 @@ function handleTextPlacement(c,o){
 }
 
 function updateSelectedObjectProperties(){
-    fabricCanvases.forEach(c=>{
-        const a=c.getActiveObject();
-        if(a&&a.type==='i-text'){a.set({fontSize:currentFontSize,fontFamily:currentFontFamily});c.renderAll();saveCanvasState(c);}
-    });
+    let updated=false;
+    const context=getActiveSelectionContext();
+    if(context&&context.objects.length>0){
+        const textObjects=context.objects.filter(isTextObject);
+        if(textObjects.length>0){
+            textObjects.forEach(obj=>applyTextStyleToObject(obj,currentFontSize,currentFontFamily));
+            context.canvas.requestRenderAll();
+            saveCanvasState(context.canvas);
+            updated=true;
+        }
+    }
+    if(!updated){
+        const candidates=[activeContextPageNum,currentVisiblePage];
+        for(const pageNum of candidates){
+            if(!Number.isFinite(pageNum))continue;
+            const c=fabricCanvases.get(pageNum);
+            if(!c)continue;
+            const a=c.getActiveObject();
+            if(a&&isTextObject(a)){
+                applyTextStyleToObject(a,currentFontSize,currentFontFamily);
+                c.requestRenderAll();
+                saveCanvasState(c);
+                updated=true;
+                break;
+            }
+        }
+    }
+    if(updated)syncSizeControl();
 }
 
 // ─── PAGE INDICATOR ─────────────────────────────────
@@ -1017,9 +1501,16 @@ function goToPage(pageNum){
     const target=Math.max(1,Math.min(numPages,Number.isFinite(parsed)?parsed:currentVisiblePage));
     const pageContainer=document.querySelector(`[data-page-num="${target}"]`);
     currentVisiblePage=target;
+    activeContextPageNum=target;
+    clearActiveSelectionsExcept(target);
     updatePageIndicator();
     if(pageContainer){
         if(!renderedPages.has(target)&&!renderingPages.has(target))renderPage(target,pageContainer);
+        else if(renderedPages.has(target)&&pageContainer.dataset.pdfZoom!==getZoomKey(zoomFactor)){
+            ensurePagePdfLayerAtCurrentZoom(target,pageContainer,true).catch(err=>{
+                if(!isRenderCancelledError(err))console.error(`PDF rerender error page ${target}:`,err);
+            });
+        }
         pageContainer.scrollIntoView({behavior:'smooth',block:'start'});
     }
 }
@@ -1039,12 +1530,105 @@ function updateVisiblePage(){
     containers.forEach(c=>{
         const r=c.getBoundingClientRect();
         const d=Math.abs(r.top+r.height/2-mid);
-        if(d<closestDist){closestDist=d;closest=parseInt(c.dataset.pageNum);}
+        if(d<closestDist){closestDist=d;closest=parseInt(c.dataset.pageNum,10);}
     });
-    if(closest!==currentVisiblePage){currentVisiblePage=closest;updatePageIndicator();}
+    if(closest!==currentVisiblePage){
+        currentVisiblePage=closest;
+        const currentCanvas=fabricCanvases.get(currentVisiblePage);
+        if(!(currentCanvas&&currentCanvas.getActiveObject())){
+            clearActiveSelectionsExcept(currentVisiblePage);
+            activeContextPageNum=currentVisiblePage;
+        }
+        updatePageIndicator();
+        syncSizeControl();
+    }
+}
+
+function getZoomKey(value){
+    return Number(value).toFixed(4);
+}
+
+function isRenderCancelledError(err){
+    return !!err&&(err.name==='RenderingCancelledException'||/cancell?ed/i.test(err.message||''));
+}
+
+function cancelPageRenderTask(pageNum){
+    const task=activePdfRenderTasks.get(pageNum);
+    if(!task)return;
+    try{task.cancel();}catch(e){}
+    activePdfRenderTasks.delete(pageNum);
+}
+
+function cancelAllRenderTasks(){
+    for(const [pageNum,task] of activePdfRenderTasks){
+        try{task.cancel();}catch(e){}
+        activePdfRenderTasks.delete(pageNum);
+    }
+}
+
+async function renderPdfCanvasLayer(pageNum,page,pdfCanvas,viewport){
+    if(!page||!pdfCanvas)return false;
+    cancelPageRenderTask(pageNum);
+    const task=page.render({canvasContext:pdfCanvas.getContext('2d'),viewport});
+    activePdfRenderTasks.set(pageNum,task);
+    try{
+        await task.promise;
+        return true;
+    }catch(err){
+        if(isRenderCancelledError(err))return false;
+        throw err;
+    }finally{
+        if(activePdfRenderTasks.get(pageNum)===task)activePdfRenderTasks.delete(pageNum);
+    }
 }
 
 // ─── CANVAS RENDERING ───────────────────────────────
+const PDF_REFRESH_MARGIN_PX=900;
+
+function isContainerNearViewport(container,margin=PDF_REFRESH_MARGIN_PX){
+    if(!container)return false;
+    const rect=container.getBoundingClientRect();
+    return rect.bottom>=-margin&&rect.top<=(window.innerHeight+margin);
+}
+
+async function ensurePagePdfLayerAtCurrentZoom(pageNum,container,force=false){
+    if(!pdfDoc||!container)return false;
+    const desiredZoom=zoomFactor;
+    const desiredKey=getZoomKey(desiredZoom);
+    if(!force&&container.dataset.pdfZoom===desiredKey)return true;
+    if(pendingPdfRefreshPages.has(pageNum))return false;
+
+    const pdfCanvas=container.querySelector('.pdf-viewer-canvas');
+    if(!pdfCanvas)return false;
+
+    pendingPdfRefreshPages.add(pageNum);
+    try{
+        const page=await pdfDoc.getPage(pageNum);
+        // Abort stale rerenders if zoom changed mid-flight.
+        if(Math.abs(zoomFactor-desiredZoom)>0.001)return false;
+
+        const dpr=window.devicePixelRatio||1;
+        const viewport=page.getViewport({scale:scale*dpr});
+        const displayWidth=viewport.width/dpr;
+        const displayHeight=viewport.height/dpr;
+
+        container.style.width=`${displayWidth}px`;
+        container.style.height=`${displayHeight}px`;
+        container.style.minHeight=`${displayHeight}px`;
+        pdfCanvas.width=viewport.width;
+        pdfCanvas.height=viewport.height;
+        pdfCanvas.style.width=`${displayWidth}px`;
+        pdfCanvas.style.height=`${displayHeight}px`;
+
+        const didRender=await renderPdfCanvasLayer(pageNum,page,pdfCanvas,viewport);
+        if(!didRender)return false;
+        if(Math.abs(zoomFactor-desiredZoom)<=0.001)container.dataset.pdfZoom=desiredKey;
+        return true;
+    }finally{
+        pendingPdfRefreshPages.delete(pageNum);
+    }
+}
+
 async function renderPage(n,containerOverride=null){
     let cont=null;
     let markedRendering=false;
@@ -1053,6 +1637,7 @@ async function renderPage(n,containerOverride=null){
         renderingPages.add(n);
         markedRendering=true;
         const pg=await pdfDoc.getPage(n),vp=pg.getViewport({scale:1});
+        pageViewportCache.set(n,{width:vp.width,height:vp.height});
         if(baseScale===null){
             baseScale=getTargetPageWidth(vp.width);
         }
@@ -1072,7 +1657,8 @@ async function renderPage(n,containerOverride=null){
         pdfC.width=rv.width;pdfC.height=rv.height;
         pdfC.style.width=`${dw}px`;pdfC.style.height=`${dh}px`;
         cont.appendChild(pdfC);
-        await pg.render({canvasContext:pdfC.getContext('2d'),viewport:rv}).promise;
+        const didRenderPdf=await renderPdfCanvasLayer(n,pg,pdfC,rv);
+        if(!didRenderPdf)return null;
 
         if(!cont.parentElement)pdfViewer.appendChild(cont);
 
@@ -1091,20 +1677,37 @@ async function renderPage(n,containerOverride=null){
         fc.freeDrawingBrush.color=currentColor;
         fc.freeDrawingBrush.width=currentStrokeWidth;
 
-        fc.on('object:modified',()=>{if(!fc._restoring)saveCanvasState(fc);});
+        fc.on('object:modified',()=>{
+            if(!fc._restoring)saveCanvasState(fc);
+            syncSizeControl();
+        });
+
+        fc.on('object:added',e=>{
+            const obj=e&&e.target;
+            if(!obj||!isArrowGroup(obj))return;
+            obj.set({lockScalingX:true,lockScalingY:true});
+            const line=(obj._objects||[]).find(p=>p.type==='line');
+            const strokeColor=(line&&line.stroke)||currentColor;
+            setArrowGroupAppearance(obj,getStrokeWidthForObject(obj),strokeColor);
+        });
 
         fc.on('path:created',e=>{
             if(e.path){
                 const canSelect=activeTool==='select';
-                e.path.set({selectable:canSelect,evented:canSelect,hasControls:true,hasBorders:true});
-                if(activeTool==='highlight') e.path.set({opacity:0.35});
+                e.path.set({selectable:canSelect,evented:canSelect,hasControls:true,hasBorders:true,strokeUniform:true});
+                if(activeTool==='highlight'&&highlightMode==='pen'){
+                    e.path.set({opacity:1,annotationType:'highlightPen'});
+                }
             }
             saveCanvasState(fc);
         });
 
         fc.on('text:editing:entered',()=>{
+            activeContextPageNum=fc._pageNum;
+            clearActiveSelectionsExcept(fc._pageNum);
             hasPendingTextEdits=true;
             hasUnsavedChanges=true;
+            syncSizeControl();
         });
 
         fc.on('text:editing:exited',()=>{
@@ -1123,14 +1726,30 @@ async function renderPage(n,containerOverride=null){
             saveCanvasState(fc);
         });
 
+        fc.on('selection:created',()=>{
+            activeContextPageNum=fc._pageNum;
+            clearActiveSelectionsExcept(fc._pageNum);
+            syncSizeControl();
+        });
+        fc.on('selection:updated',()=>{
+            activeContextPageNum=fc._pageNum;
+            clearActiveSelectionsExcept(fc._pageNum);
+            syncSizeControl();
+        });
+        fc.on('selection:cleared',()=>{
+            if(activeContextPageNum===fc._pageNum)activeContextPageNum=currentVisiblePage;
+            syncSizeControl();
+        });
+
         fc.on('mouse:down',o=>{
             fc.lastModifiedTime=Date.now();
+            activeContextPageNum=fc._pageNum;
             if(o.e.button===2){
                 isPanning=true;panStartX=o.e.clientX-panOffsetX;panStartY=o.e.clientY-panOffsetY;fc.defaultCursor='grabbing';
-            }else if(SHAPE_TOOLS.includes(activeTool)||DRAW_TOOLS.includes(activeTool)){
+            }else if(isShapeModeTool(activeTool)||isFreeDrawModeTool(activeTool)){
                 // In drawing/shape mode: ignore existing objects, always start new shape
                 if(o.target){fc.discardActiveObject();fc.renderAll();}
-                if(SHAPE_TOOLS.includes(activeTool)) handleShapeStart(fc,o);
+                if(isShapeModeTool(activeTool)) handleShapeStart(fc,o);
             }else if(!o.target){
                 if(activeTool==='text') handleTextPlacement(fc,o);
             }
@@ -1151,25 +1770,27 @@ async function renderPage(n,containerOverride=null){
         cont.addEventListener('contextmenu',e=>e.preventDefault());
 
         fabricCanvases.set(n,fc);
-        fc._renderZoom=zoomFactor; // remember zoom at render time for viewport transform
+        // Keep all canvases in a shared base coordinate space so annotations stay
+        // consistent across pages rendered at different times/zooms.
+        fc._renderZoom=1;
+        fc.setViewportTransform([zoomFactor,0,0,zoomFactor,0,0]);
         // Lightweight init for this canvas only (no showMsg, no reconfiguring all canvases)
         fc.selection=activeTool==='select';
-        fc.isDrawingMode=DRAW_TOOLS.includes(activeTool);
+        fc.isDrawingMode=isFreeDrawModeTool(activeTool);
         if(activeTool==='draw'){
             fc.freeDrawingBrush=new fabric.PencilBrush(fc);
             fc.freeDrawingBrush.color=currentColor;
             fc.freeDrawingBrush.width=currentStrokeWidth;
-        }else if(activeTool==='highlight'){
-            fc.freeDrawingBrush=new fabric.PencilBrush(fc);
-            fc.freeDrawingBrush.color='rgba(250,204,21,0.4)';
-            fc.freeDrawingBrush.width=20;
+        }else if(activeTool==='highlight'&&highlightMode==='pen'){
+            configureHighlightBrush(fc);
         }
         fc.defaultCursor=getCursorForTool(activeTool);
+        fc.calcOffset();
         renderedPages.add(n);
         pageSizeMap.set(n,{w:dw,h:dh});
         cont.style.minHeight=`${dh}px`;
         cont.dataset.rendered='true';
-        if(pageRenderObserver)pageRenderObserver.unobserve(cont);
+        cont.dataset.pdfZoom=getZoomKey(zoomFactor);
         return {width:dw,height:dh};
     }catch(err){console.error(`Error page ${n}:`,err);}
     finally{if(markedRendering)renderingPages.delete(n);}
@@ -1177,13 +1798,17 @@ async function renderPage(n,containerOverride=null){
 
 async function renderAllPages(){
     if(!pdfDoc)return;
+    cancelAllRenderTasks();
+    queuedZoomFactor=null;
+    zoomWorkerActive=false;
     pdfViewer.innerHTML='';
     fabricCanvases.forEach(c=>{try{c.dispose();}catch(e){}});
     if(pageRenderObserver)pageRenderObserver.disconnect();
     pageRenderObserver=null;renderedPages.clear();renderingPages.clear();fabricCanvases.clear();
+    pageViewportCache.clear();
     savedStateByPage.clear();historyStack.length=0;historyPointer=-1;hasPendingTextEdits=false;hasUnsavedChanges=false;
     isPanning=false;panOffsetX=0;panOffsetY=0;pdfViewer.style.transform='translate(0,0)';
-    currentVisiblePage=1;baseScale=null;zoomFactor=1.0;updateZoomDisplay();
+    currentVisiblePage=1;activeContextPageNum=1;baseScale=null;zoomFactor=1.0;updateZoomDisplay();
     let ph=defaultPageSize.h||800;
     const eager=Math.min(2,numPages);
 
@@ -1200,13 +1825,19 @@ async function renderAllPages(){
         entries.forEach(entry=>{
             if(entry.isIntersecting){
                 const pNum=parseInt(entry.target.dataset.pageNum,10);
-                if(!renderedPages.has(pNum)&&!renderingPages.has(pNum))renderPage(pNum,entry.target);
+                if(!renderedPages.has(pNum)&&!renderingPages.has(pNum)){
+                    renderPage(pNum,entry.target);
+                }else if(renderedPages.has(pNum)&&entry.target.dataset.pdfZoom!==getZoomKey(zoomFactor)){
+                    ensurePagePdfLayerAtCurrentZoom(pNum,entry.target).catch(err=>{
+                        if(!isRenderCancelledError(err))console.error(`PDF rerender error page ${pNum}:`,err);
+                    });
+                }
             }
         });
     },{root:null,rootMargin:'200px 0px',threshold:0.05});
 
     document.querySelectorAll('.pdf-page-container').forEach(el=>{
-        if(!renderedPages.has(parseInt(el.dataset.pageNum,10)))pageRenderObserver.observe(el);
+        pageRenderObserver.observe(el);
     });
     updatePageIndicator();
 }
@@ -1220,7 +1851,11 @@ async function loadPDF(f){
     if(loadingOverlay)loadingOverlay.classList.remove('hidden');
     btnSavePdf.disabled=true;
     try{
-        if(pdfDoc){pdfDoc.destroy();pdfDoc=null;}
+        if(pdfDoc){
+            cancelAllRenderTasks();
+            pdfDoc.destroy();
+            pdfDoc=null;
+        }
         currentFileName=f.name;
         document.getElementById('fileName').textContent=currentFileName;
         document.getElementById('fileNameDisplay').classList.remove('hidden');
@@ -1236,7 +1871,11 @@ async function loadPDF(f){
         showMsg(`PDF loaded: ${numPages} page(s)`);
     }catch(e){
         console.error('Load err:',e);
+        fabricCanvases.forEach(c=>{try{c.dispose();}catch(ex){}});
+        fabricCanvases.clear();renderedPages.clear();renderingPages.clear();
+        savedStateByPage.clear();historyStack.length=0;historyPointer=-1;
         const errDiv=document.createElement('div');errDiv.className='text-red-600 p-8';errDiv.textContent='Error: '+e.message;pdfViewer.innerHTML='';pdfViewer.appendChild(errDiv);
+        btnSavePdf.disabled=true;
     }finally{
         if(ldg)ldg.style.display='none';
         if(loadingOverlay)loadingOverlay.classList.add('hidden');
@@ -1325,9 +1964,10 @@ function buildNormalizedOverlayCanvas(fc,rotation,multiplier=SAVE_OVERLAY_SCALE,
     return out;
 }
 
+const _colorParseCtx=document.createElement('canvas').getContext('2d');
 function fabricColorToPdfPaint(colorStr,rgbFn){
     try{
-        const ctx=document.createElement('canvas').getContext('2d');
+        const ctx=_colorParseCtx;
         ctx.fillStyle=colorStr||'black';
         const c=ctx.fillStyle;
         if(c.startsWith('#')){
@@ -1500,7 +2140,7 @@ async function saveAllPagesAsPDF(){
             fc.setViewportTransform([1,0,0,1,0,0]);
             fc.setWidth(savedW/(zoomFactor/renderZoom));
             fc.setHeight(savedH/(zoomFactor/renderZoom));
-
+            try{
             const page=baseDoc.getPage(pn-1);
             const jsPage=await pdfDoc.getPage(pn);
             const view=jsPage.view||[0,0,page.getWidth(),page.getHeight()];
@@ -1523,11 +2163,12 @@ async function saveAllPagesAsPDF(){
                 }
             }
             drawTextObjectsAsVector(fc,page,rot,{x:boxX,y:boxY,w:boxW,h:boxH},{degrees,rgb,pickFont});
-
+            stampedPages++;
+            }finally{
             // Restore zoom viewport transform
             fc.setWidth(savedW);fc.setHeight(savedH);
             fc.setViewportTransform(savedVpt);
-            stampedPages++;
+            }
         }
 
         updateSaveProgress(88,'Compiling final PDF...');
@@ -1549,6 +2190,7 @@ async function saveAllPagesAsPDF(){
         });
         hasPendingTextEdits=false;
         recomputeUnsavedChanges();
+        syncSizeControl();
 
         updateSaveProgress(100,stampedPages>0?'PDF saved successfully!':'Saved (no annotations found)','');
         await yieldToUI();
@@ -1620,6 +2262,27 @@ document.addEventListener('keydown',e=>{
         return;
     }
 
+    // Ctrl+S save (works even when typing)
+    if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'&&!e.shiftKey){
+        e.preventDefault();
+        if(!btnSavePdf.disabled)saveAllPagesAsPDF();
+        return;
+    }
+
+    // Escape: deselect objects or switch to select tool
+    if(e.key==='Escape'){
+        if(isTyping){e.target.blur();return;}
+        if(isEditingCanvas){
+            fabricCanvases.forEach(c=>{
+                const ao=c.getActiveObject();
+                if(ao&&ao.type==='i-text'&&ao.isEditing)ao.exitEditing();
+            });
+        }
+        fabricCanvases.forEach(c=>{c.discardActiveObject();c.renderAll();});
+        setActiveTool('select');
+        return;
+    }
+
     if(isTyping||isEditingCanvas)return;
 
     // Tool shortcuts (regular + numpad)
@@ -1637,6 +2300,20 @@ document.addEventListener('keydown',e=>{
 
     if((e.ctrlKey||e.metaKey)&&key==='z'&&!e.shiftKey){e.preventDefault();undo();}
     else if((e.ctrlKey||e.metaKey)&&(key==='y'||(key==='z'&&e.shiftKey))){e.preventDefault();redo();}
+});
+
+// ─── DRAG & DROP ────────────────────────────────────
+document.addEventListener('dragover',e=>e.preventDefault());
+document.addEventListener('drop',e=>{
+    e.preventDefault();
+    const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0];
+    if(!f)return;
+    const isPdf=(((f.type||'').toLowerCase()==='application/pdf')||/\.pdf$/i.test(f.name||''));
+    if(isPdf){
+        recomputeUnsavedChanges();
+        if(hasUnsavedChanges&&pdfDoc){if(!confirm('Unsaved changes will be lost. Continue?'))return;}
+        loadPDF(f);
+    }else{showMsg("Not a PDF");}
 });
 
 // ─── EVENT LISTENERS ────────────────────────────────
@@ -1688,9 +2365,23 @@ if(arrowModeSelect){
         }
     });
 }
+if(highlightModeSelect){
+    highlightModeSelect.addEventListener('change',()=>{
+        const selected=highlightModeSelect.value;
+        if(HIGHLIGHT_MODE_OPTIONS.includes(selected)){
+            highlightMode=selected;
+            persistHighlightModePreference();
+            if(activeTool==='highlight')setActiveTool('highlight');
+            showMsg(`Highlight mode: ${highlightModeSelect.options[highlightModeSelect.selectedIndex].text}`);
+        }
+    });
+}
 sizeSlider.addEventListener('input',()=>handleSizeChange(sizeSlider.value));
 sizeNumber.addEventListener('input',()=>handleSizeChange(sizeNumber.value));
 fontFamilySelect.addEventListener('change',()=>{currentFontFamily=fontFamilySelect.value;updateSelectedObjectProperties();});
+if(fillToggle)fillToggle.addEventListener('change',()=>handleFillToggleChange(fillToggle.checked));
+if(fillOpacitySlider)fillOpacitySlider.addEventListener('input',()=>handleFillOpacityChange(fillOpacitySlider.value));
+if(fillOpacityNumber)fillOpacityNumber.addEventListener('input',()=>handleFillOpacityChange(fillOpacityNumber.value));
 
 // Color swatch clicks
 document.querySelectorAll('.color-swatch').forEach(s=>s.addEventListener('click',()=>{setColor(s.dataset.color);addRecentColor(s.dataset.color);closeColorPopover();}));
@@ -1797,13 +2488,7 @@ function renderRecentColors(){
     // Color wheel input
     popoverWheel.addEventListener('input',()=>{
         const c=popoverWheel.value;
-        hexInput.value=c.toUpperCase();
-        previewDot.style.background=c;
-        currentColor=c;
-        customColorInput.value=c;
-        document.querySelectorAll('.color-swatch').forEach(s=>s.classList.remove('active-color'));
-        rainbowBtn.classList.add('active-color');
-        if(activeTool==='draw'){fabricCanvases.forEach(fc=>{if(fc.freeDrawingBrush)fc.freeDrawingBrush.color=c;});}
+        setColor(c);
     });
     popoverWheel.addEventListener('change',()=>{addRecentColor(popoverWheel.value);});
 
@@ -1851,75 +2536,109 @@ function updateZoomDisplay(){
     if(zoomLevelEl)zoomLevelEl.textContent=Math.round(zoomFactor*100)+'%';
 }
 
+function clampZoom(newFactor){
+    return Math.max(ZOOM_MIN,Math.min(ZOOM_MAX,newFactor));
+}
+
+function getPendingZoomBase(){
+    return queuedZoomFactor===null?zoomFactor:queuedZoomFactor;
+}
+
 async function applyZoom(newFactor){
-    // Clamp
-    newFactor=Math.max(ZOOM_MIN,Math.min(ZOOM_MAX,newFactor));
+    newFactor=clampZoom(newFactor);
     if(Math.abs(newFactor-zoomFactor)<0.001)return;
     zoomFactor=newFactor;
     updateZoomDisplay();
     if(!pdfDoc)return;
 
-    // Remember scroll position relative to document
     const scrollEl=document.documentElement;
     let scrollRatio=0;
-    if(scrollEl.scrollHeight>0)scrollRatio=scrollEl.scrollTop/scrollEl.scrollHeight;
+    if(scrollEl){
+        const maxScroll=Math.max(1,scrollEl.scrollHeight-scrollEl.clientHeight);
+        scrollRatio=scrollEl.scrollTop/maxScroll;
+    }
 
-    // Recalculate baseScale from the first page's original viewport
     const pg1=await pdfDoc.getPage(1);
     const vp1=pg1.getViewport({scale:1});
     const fitScale=getTargetPageWidth(vp1.width);
     baseScale=fitScale*zoomFactor;
     scale=baseScale;
+    const fallbackViewport=pageViewportCache.get(1)||{width:vp1.width,height:vp1.height};
 
-    // Re-render all currently rendered pages at new scale
-    const dpr=window.devicePixelRatio||1;
     for(const [n,fc] of fabricCanvases){
-        const pg=await pdfDoc.getPage(n);
-        const rv=pg.getViewport({scale:scale*dpr});
-        const dw=rv.width/dpr,dh=rv.height/dpr;
+        const vp=pageViewportCache.get(n)||fallbackViewport;
+        const dw=vp.width*scale,dh=vp.height*scale;
 
-        // Resize container
         const cont=document.querySelector(`[data-page-num="${n}"]`);
         if(cont){cont.style.width=`${dw}px`;cont.style.height=`${dh}px`;cont.style.minHeight=`${dh}px`;}
 
-        // Re-render PDF canvas at zoomed resolution
-        const pdfC=cont?cont.querySelector('.pdf-viewer-canvas'):null;
-        if(pdfC){
-            pdfC.width=rv.width;pdfC.height=rv.height;
-            pdfC.style.width=`${dw}px`;pdfC.style.height=`${dh}px`;
-            await pg.render({canvasContext:pdfC.getContext('2d'),viewport:rv}).promise;
-        }
-
-        // Use viewport transform — objects keep their original coordinates,
-        // Fabric handles mouse mapping automatically, strokes stay consistent
         const renderZoom=fc._renderZoom||1;
         const vptRatio=zoomFactor/renderZoom;
         fc.setWidth(dw);fc.setHeight(dh);
         fc.setViewportTransform([vptRatio,0,0,vptRatio,0,0]);
-        fc.renderAll();
+        fc.calcOffset();
+        fc.requestRenderAll();
         pageSizeMap.set(n,{w:dw,h:dh});
-    }
 
-    // Also resize placeholder (non-rendered) containers
-    for(let i=1;i<=numPages;i++){
-        if(!fabricCanvases.has(i)){
-            const cont=document.querySelector(`[data-page-num="${i}"]`);
-            if(cont){
-                const pg=await pdfDoc.getPage(i);
-                const rv=pg.getViewport({scale:scale*dpr});
-                const dw=rv.width/dpr,dh=rv.height/dpr;
-                cont.style.width=`${dw}px`;cont.style.minHeight=`${dh}px`;
+        if(cont&&isContainerNearViewport(cont)){
+            try{
+                await ensurePagePdfLayerAtCurrentZoom(n,cont,true);
+            }catch(err){
+                if(!isRenderCancelledError(err))console.error(`PDF rerender error page ${n}:`,err);
+            }
+        }else if(cont){
+            const pdfC=cont.querySelector('.pdf-viewer-canvas');
+            if(pdfC){
+                // Fast path for distant pages: resize display now, rerender PDF when page
+                // comes back near viewport (observer/goToPage).
+                pdfC.style.width=`${dw}px`;
+                pdfC.style.height=`${dh}px`;
             }
         }
     }
 
-    // Restore scroll position
-    if(scrollEl)scrollEl.scrollTop=scrollRatio*scrollEl.scrollHeight;
+    for(let i=1;i<=numPages;i++){
+        if(!fabricCanvases.has(i)){
+            const cont=document.querySelector(`[data-page-num="${i}"]`);
+            if(cont){
+                const vp=pageViewportCache.get(i)||fallbackViewport;
+                const dw=vp.width*scale,dh=vp.height*scale;
+                cont.style.width=`${dw}px`;cont.style.height=`${dh}px`;cont.style.minHeight=`${dh}px`;
+            }
+        }
+    }
+
+    if(scrollEl){
+        const maxScroll=Math.max(1,scrollEl.scrollHeight-scrollEl.clientHeight);
+        scrollEl.scrollTop=scrollRatio*maxScroll;
+    }
+    updateVisiblePage();
 }
 
-function zoomIn(){applyZoom(zoomFactor+ZOOM_STEP);}
-function zoomOut(){applyZoom(zoomFactor-ZOOM_STEP);}
-function zoomFit(){applyZoom(1.0);}
+let _zoomRetries=0;
+async function queueZoom(newFactor){
+    queuedZoomFactor=clampZoom(newFactor);
+    if(zoomWorkerActive)return;
+    zoomWorkerActive=true;
+    try{
+        while(queuedZoomFactor!==null){
+            const next=queuedZoomFactor;
+            queuedZoomFactor=null;
+            await applyZoom(next);
+            _zoomRetries=0;
+        }
+    }catch(err){
+        if(!isRenderCancelledError(err))console.error('Zoom error:',err);
+    }finally{
+        zoomWorkerActive=false;
+        if(queuedZoomFactor!==null&&_zoomRetries<3){_zoomRetries++;queueZoom(queuedZoomFactor);}
+        else{_zoomRetries=0;queuedZoomFactor=null;}
+    }
+}
+
+function zoomIn(){queueZoom(getPendingZoomBase()+ZOOM_STEP);}
+function zoomOut(){queueZoom(getPendingZoomBase()-ZOOM_STEP);}
+function zoomFit(){queueZoom(1.0);}
 
 document.getElementById('btnZoomIn').addEventListener('click',zoomIn);
 document.getElementById('btnZoomOut').addEventListener('click',zoomOut);
@@ -1930,12 +2649,13 @@ document.addEventListener('wheel',(e)=>{
     if(e.ctrlKey||e.metaKey){
         e.preventDefault();
         const delta=e.deltaY>0?-ZOOM_STEP:ZOOM_STEP;
-        applyZoom(zoomFactor+delta);
+        queueZoom(getPendingZoomBase()+delta);
     }
 },{passive:false});
 
 // ─── INIT ───────────────────────────────────────────
 loadArrowModePreference();
+loadHighlightModePreference();
 setActiveTool('select');
 currentFontFamily=fontFamilySelect.value;
 syncSizeControl();
