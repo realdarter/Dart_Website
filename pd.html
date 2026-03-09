@@ -102,8 +102,8 @@
         }
         #pageIndicator { transition: opacity 0.2s ease; }
         .divider { width: 1px; height: 24px; background: #d1d5db; margin: 0 4px; flex-shrink: 0; }
-        #sizeSlider { accent-color: #4f46e5; }
-        #customColor { width: 0; height: 0; padding: 0; border: none; position: absolute; opacity: 0; pointer-events: none; }
+
+
         .rainbow-btn {
             width: 24px; height: 24px; border-radius: 6px; cursor: pointer; flex-shrink: 0;
             display: flex; align-items: center; justify-content: center;
@@ -179,6 +179,183 @@
             font-size: 11px; font-weight: 700; color: #6b7280;
             min-width: 38px; text-align: center; user-select: none;
         }
+        .settings-launcher {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            border-radius: 14px;
+            border: 1px solid #c7d2fe;
+            background: linear-gradient(135deg, #f8fbff 0%, #eef2ff 55%, #e0e7ff 100%);
+            color: #1f2937;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 18px rgba(79,70,229,0.14);
+            transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+            flex-shrink: 0;
+        }
+        .settings-launcher:hover {
+            transform: translateY(-1px);
+            border-color: #818cf8;
+            box-shadow: 0 12px 22px rgba(79,70,229,0.18);
+        }
+        .settings-launcher-icon {
+            width: 26px;
+            height: 26px;
+            border-radius: 999px;
+            background: linear-gradient(135deg, #4f46e5 0%, #312e81 100%);
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .settings-modal-backdrop {
+            background: rgba(17,24,39,0.45);
+            backdrop-filter: blur(4px);
+        }
+        .shortcut-settings-panel {
+            width: min(1080px, calc(100vw - 2rem));
+            max-height: calc(100vh - 2rem);
+            background: #fff;
+            border-radius: 24px;
+            box-shadow: 0 30px 70px rgba(15,23,42,0.28);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .shortcut-section-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 18px;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+            overflow: hidden;
+        }
+        .shortcut-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 14px 18px;
+            border-top: 1px solid #e5e7eb;
+        }
+        .shortcut-row:first-child { border-top: none; }
+        .shortcut-row-main { min-width: 0; }
+        .shortcut-row-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #111827;
+        }
+        .shortcut-row-help {
+            margin-top: 3px;
+            font-size: 11px;
+            color: #6b7280;
+            line-height: 1.4;
+        }
+        .shortcut-slot-group {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+        .shortcut-slot-btn {
+            min-width: 122px;
+            height: 34px;
+            padding: 0 12px;
+            border-radius: 10px;
+            border: 1px solid #d1d5db;
+            background: #fff;
+            color: #111827;
+            font-size: 12px;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.12s ease;
+        }
+        .shortcut-slot-btn:hover {
+            background: #eef2ff;
+            border-color: #818cf8;
+        }
+        .shortcut-slot-btn.capture-active {
+            background: #eef2ff;
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79,70,229,0.15);
+            color: #312e81;
+        }
+        .shortcut-slot-btn.shortcut-empty {
+            color: #9ca3af;
+            font-style: italic;
+        }
+        .shortcut-status {
+            display: inline-flex;
+            align-items: center;
+            min-height: 36px;
+            padding: 0 12px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .shortcut-status.info {
+            background: #eff6ff;
+            color: #1d4ed8;
+        }
+        .shortcut-status.success {
+            background: #ecfdf5;
+            color: #047857;
+        }
+        .shortcut-status.error {
+            background: #fef2f2;
+            color: #b91c1c;
+        }
+        .settings-field {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .settings-field-title {
+            font-size: 13px;
+            font-weight: 800;
+            color: #111827;
+        }
+        .settings-field-help {
+            font-size: 11px;
+            line-height: 1.45;
+            color: #6b7280;
+        }
+        .settings-number-input {
+            width: 100%;
+            height: 40px;
+            border-radius: 12px;
+            border: 1px solid #cbd5e1;
+            background: #fff;
+            padding: 0 12px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #111827;
+        }
+        .settings-number-input:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+        }
+        .shortcut-reference-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 4px 10px;
+            font-size: 12px;
+            color: #312e81;
+        }
+        .shortcut-reference-grid .shortcut-reference-full {
+            grid-column: 1 / -1;
+        }
+        @media (max-width: 960px) {
+            .shortcut-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .shortcut-slot-group {
+                justify-content: flex-start;
+            }
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -229,7 +406,7 @@
     <div class="flex items-center justify-between px-4 py-1.5 border-b border-gray-100">
         <div class="flex items-center gap-3 min-w-0">
             <h1 class="text-xl font-extrabold text-gray-900"><span class="text-indigo-600">Draft</span>Annotator</h1>
-            <div id="fileNameDisplay" class="hidden items-center gap-2 bg-gradient-to-r from-indigo-50 to-purple-50 px-3 py-1 rounded-lg border border-indigo-200 min-w-0 flex-shrink">
+            <div id="fileNameDisplay" class="hidden items-center gap-2 bg-gradient-to-r from-indigo-50 to-purple-50 px-3 py-1 rounded-lg border border-indigo-200 min-w-0 shrink">
                 <svg class="w-4 h-4 text-indigo-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
                 </svg>
@@ -240,6 +417,14 @@
             <button id="btnLoadPdf" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold py-2 px-5 rounded-lg transition-colors">Load PDF</button>
             <button id="btnUndo" class="bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm font-bold py-2 px-4 rounded-lg border border-gray-300 transition-colors" type="button" title="Undo (Ctrl+Z)">Undo</button>
             <button id="btnRedo" class="bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm font-bold py-2 px-4 rounded-lg border border-gray-300 transition-colors" type="button" title="Redo (Ctrl+Y)">Redo</button>
+            <button id="btnShortcutSettings" class="settings-launcher" type="button" title="Settings" aria-label="Settings">
+                <span class="settings-launcher-icon">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3l1.8 2.4 3-.2.8 2.9 2.8 1.2-1 2.8 1 2.8-2.8 1.2-.8 2.9-3-.2L12 21l-1.8-2.4-3 .2-.8-2.9-2.8-1.2 1-2.8-1-2.8 2.8-1.2.8-2.9 3 .2L12 3z"></path>
+                        <circle cx="12" cy="12" r="3.2"></circle>
+                    </svg>
+                </span>
+            </button>
             <button id="btnSavePdf" class="bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold py-2 px-5 rounded-lg disabled:opacity-50 transition-colors" disabled>Save PDF</button>
         </div>
     </div>
@@ -303,7 +488,7 @@
             <div class="color-swatch" data-color="#22c55e" style="background:#22c55e" title="Green"></div>
             <div class="color-swatch" data-color="#000000" style="background:#000000" title="Black"></div>
             <div class="color-swatch" data-color="#f97316" style="background:#f97316" title="Orange"></div>
-            <input type="color" id="customColor" value="#ef4444" title="Custom color">
+
             <div class="rainbow-btn" id="rainbowBtn" title="More colors"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="2"/><circle cx="17.5" cy="10.5" r="2"/><circle cx="8.5" cy="7.5" r="2"/><circle cx="6.5" cy="12.5" r="2"/><path d="M12 2a10 10 0 000 20c1.1 0 2-.9 2-2v-.5c0-.5-.2-1-.5-1.3a1.4 1.4 0 011-2.3H16a8 8 0 00-4-15.6z"/></svg></div>
         </div>
 
@@ -312,8 +497,8 @@
         <!-- Unified Size control -->
         <div class="tool-control-group gap-1">
             <span id="sizeLabel">Size</span>
-            <input type="range" id="sizeSlider" min="1" max="12" value="3" style="width:70px;accent-color:#4f46e5;">
-            <input type="number" id="sizeNumber" value="3" min="1" max="72" class="w-10 text-xs rounded px-1 py-0.5 border border-gray-300 text-center">
+            <input type="range" id="sizeSlider" min="1" max="50" value="3" style="width:70px;accent-color:#4f46e5;">
+            <input type="number" id="sizeNumber" value="3" min="1" max="50" class="w-12 text-xs rounded px-1 py-0.5 border border-gray-300 text-center">
         </div>
 
         <div class="divider"></div>
@@ -371,7 +556,7 @@
         <div class="divider"></div>
 
         <!-- Zoom controls -->
-        <div class="zoom-controls" id="zoomControls">
+        <div class="zoom-controls">
             <button type="button" class="zoom-btn" id="btnZoomOut" title="Zoom out (Ctrl+-)">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
             </button>
@@ -437,20 +622,8 @@
             </div>
             <div class="bg-indigo-50 p-3 rounded-lg border border-indigo-200">
                 <h3 class="font-bold text-indigo-900 mb-1 text-sm">Shortcuts</h3>
-                <div class="grid grid-cols-2 gap-x-2 gap-y-0.5 text-xs text-indigo-800">
-                    <span><b>1 / S</b> Select</span><span><b>2 / D</b> Draw</span>
-                    <span><b>3 / T</b> Text</span><span><b>4 / L</b> Line</span>
-                    <span><b>5 / A</b> Arrow</span><span><b>6 / R</b> Rect</span>
-                    <span><b>7 / C</b> Circle</span><span><b>8 / H</b> Highlight</span>
-                    <span><b>9 / V</b> Cloud</span><span></span>
-                    <span class="col-span-2 mt-1 border-t border-indigo-200 pt-1"><b>Ctrl+Z</b> Undo</span>
-                    <span class="col-span-2"><b>Ctrl+Y</b> Redo</span>
-                    <span class="col-span-2"><b>Ctrl+S</b> Save</span>
-                    <span class="col-span-2"><b>Del</b> Delete</span>
-                    <span class="col-span-2"><b>Esc</b> Deselect</span>
-                    <span class="col-span-2"><b>Right-click</b> Pan</span>
-                    <span class="col-span-2"><b>Ctrl+scroll</b> Zoom</span>
-                </div>
+                <div id="shortcutReferenceList" class="shortcut-reference-grid"></div>
+                <p class="text-[11px] text-indigo-700 mt-2">Open Settings to remap shortcuts and tune editor limits.</p>
             </div>
         </div>
     </div>
@@ -463,14 +636,10 @@
 
 <main class="max-w-full mx-auto p-3">
     <div id="pdfViewer" class="flex flex-col items-center">
-        <div id="loadingMessage" class="text-center text-gray-600 p-12 bg-white rounded-xl shadow-md mt-10" style="display:none;">
-            <div class="animate-spin rounded-full h-10 w-10 border-t-4 border-b-4 border-indigo-600 mx-auto mb-4"></div>
-            <p class="text-lg font-semibold">Loading PDF...</p>
-        </div>
         <p id="initialMessage" class="text-center text-gray-600 p-10 text-xl bg-white rounded-2xl shadow-xl mt-16">
             <b>DraftAnnotator</b><br>
             <span class="text-base">Load a PDF to start redlining</span><br>
-            <span class="text-sm mt-2 block text-gray-500">Keys 1-9 or S/D/T/L/A/R/C/H/V for tools | Right-click to pan | Ctrl+Z/Y for undo/redo</span>
+            <span id="initialShortcutHint" class="text-sm mt-2 block text-gray-500">Shortcut hints load from your saved settings.</span>
         </p>
     </div>
 </main>
@@ -481,6 +650,76 @@
 <div id="pageIndicator" class="fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-gray-900 to-gray-800 text-white px-4 py-2 rounded-full shadow-xl font-semibold text-base hidden border-2 border-gray-700" style="z-index:50;">
     <span class="text-indigo-300">Page</span> <span id="currentPageNum" class="text-white text-xl">1</span> <span class="text-gray-400">of</span> <span id="totalPagesNum" class="text-white text-xl">1</span>
 </div>
+
+<div id="shortcutSettingsModal" class="fixed inset-0 z-[70] hidden settings-modal-backdrop">
+    <div class="min-h-full flex items-center justify-center p-4">
+        <div class="shortcut-settings-panel">
+            <div class="px-6 py-5 border-b border-gray-200 flex items-start justify-between gap-4">
+                <div>
+                    <h2 class="text-xl font-extrabold text-gray-900">Settings</h2>
+                    <p class="text-sm text-gray-600 mt-1">Tune editor limits and remap keyboard shortcuts. Everything saves in this browser.</p>
+                </div>
+                <button id="btnCloseShortcutSettings" class="toolbar-btn" type="button" aria-label="Close shortcut settings">X</button>
+            </div>
+            <div class="px-6 py-4 bg-gray-50 border-b border-gray-200 text-sm text-gray-600">
+                Duplicate bindings are blocked. If saved settings no longer match the current app version, this panel resets them back to the latest defaults automatically.
+            </div>
+            <div class="px-6 py-5 overflow-y-auto" style="max-height:calc(100vh - 210px);">
+                <div class="grid xl:grid-cols-[320px_minmax(0,1fr)] gap-6">
+                    <section class="shortcut-section-card">
+                        <div class="px-5 py-4 border-b border-gray-200 bg-white">
+                            <h3 class="text-sm font-extrabold uppercase tracking-wide text-indigo-700">Editor</h3>
+                            <p class="text-xs text-gray-500 mt-1">Adjust the editable limits shown in the toolbar.</p>
+                        </div>
+                        <div class="p-5 space-y-4">
+                            <label class="settings-field">
+                                <span class="settings-field-title">Maximum Weight</span>
+                                <span class="settings-field-help">The highest `Wt` value available for draw, line, arrow, rectangle, circle, cloud, and highlight tools.</span>
+                                <input id="settingsMaxStrokeSize" class="settings-number-input" type="number" min="6" max="200" step="1">
+                            </label>
+                            <label class="settings-field">
+                                <span class="settings-field-title">Maximum Text Size</span>
+                                <span class="settings-field-help">The highest text size available in the shared size control.</span>
+                                <input id="settingsMaxTextSize" class="settings-number-input" type="number" min="72" max="1000" step="1">
+                            </label>
+                            <div class="rounded-2xl bg-indigo-50 border border-indigo-100 px-4 py-3 text-xs text-indigo-900 leading-relaxed">
+                                Toolbar controls update to these limits after you save. Existing annotations are not deleted; this only changes the control range.
+                            </div>
+                        </div>
+                    </section>
+                    <div class="space-y-6">
+                    <section class="shortcut-section-card">
+                        <div class="px-5 py-4 border-b border-gray-200 bg-white">
+                            <h3 class="text-sm font-extrabold uppercase tracking-wide text-indigo-700">Tools</h3>
+                            <p class="text-xs text-gray-500 mt-1">These switch the active annotation tool.</p>
+                        </div>
+                        <div id="shortcutToolRows"></div>
+                    </section>
+                    <section class="shortcut-section-card">
+                        <div class="px-5 py-4 border-b border-gray-200 bg-white">
+                            <h3 class="text-sm font-extrabold uppercase tracking-wide text-indigo-700">Actions</h3>
+                            <p class="text-xs text-gray-500 mt-1">These run editing, navigation, and zoom commands.</p>
+                        </div>
+                        <div id="shortcutActionRows"></div>
+                    </section>
+                    </div>
+                </div>
+            </div>
+            <div class="px-6 py-4 border-t border-gray-200 bg-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div id="shortcutSettingsStatus" class="shortcut-status info hidden"></div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <button id="btnImportSettings" class="bg-white hover:bg-gray-50 text-gray-800 text-sm font-bold py-2 px-4 rounded-lg border border-gray-300 transition-colors" type="button">Import</button>
+                    <button id="btnExportSettingsJson" class="bg-white hover:bg-gray-50 text-gray-800 text-sm font-bold py-2 px-4 rounded-lg border border-gray-300 transition-colors" type="button">Export JSON</button>
+                    <button id="btnExportSettingsCsv" class="bg-white hover:bg-gray-50 text-gray-800 text-sm font-bold py-2 px-4 rounded-lg border border-gray-300 transition-colors" type="button">Export CSV</button>
+                    <button id="btnResetShortcutDefaults" class="bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm font-bold py-2 px-4 rounded-lg border border-gray-300 transition-colors" type="button">Reset to Default</button>
+                    <button id="btnCancelShortcutSettings" class="bg-white hover:bg-gray-50 text-gray-800 text-sm font-bold py-2 px-4 rounded-lg border border-gray-300 transition-colors" type="button">Cancel</button>
+                    <button id="btnSaveShortcutSettings" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold py-2 px-4 rounded-lg transition-colors" type="button">Save Settings</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<input id="settingsImportInput" type="file" accept=".json,.csv,application/json,text/csv" class="hidden">
 
 </div>
 </div>
@@ -515,6 +754,7 @@ const pageViewportCache=new Map();
 const pdfViewer=document.getElementById('pdfViewer'),fileInput=document.getElementById('fileInput');
 const btnLoadPdf=document.getElementById('btnLoadPdf'),btnSavePdf=document.getElementById('btnSavePdf');
 const btnUndo=document.getElementById('btnUndo'),btnRedo=document.getElementById('btnRedo');
+const btnShortcutSettings=document.getElementById('btnShortcutSettings');
 const fontControlsGroup=document.getElementById('fontControlsGroup');
 const fontFamilySelect=document.getElementById('fontFamilySelect');
 const sizeSlider=document.getElementById('sizeSlider'),sizeNumber=document.getElementById('sizeNumber'),sizeLabel=document.getElementById('sizeLabel');
@@ -523,7 +763,7 @@ const fillDivider=document.getElementById('fillDivider');
 const fillToggle=document.getElementById('fillToggle');
 const fillOpacitySlider=document.getElementById('fillOpacitySlider');
 const fillOpacityNumber=document.getElementById('fillOpacityNumber');
-const customColorInput=document.getElementById('customColor');
+
 const arrowModeGroup=document.getElementById('arrowModeGroup');
 const arrowModeSelect=document.getElementById('arrowModeSelect');
 const highlightModeGroup=document.getElementById('highlightModeGroup');
@@ -535,11 +775,33 @@ const pageJumpTotal=document.getElementById('pageJumpTotal');
 const btnPrevPage=document.getElementById('btnPrevPage');
 const btnNextPage=document.getElementById('btnNextPage');
 const loadingOverlay=document.getElementById('loadingOverlay');
+const initialShortcutHint=document.getElementById('initialShortcutHint');
+const shortcutReferenceList=document.getElementById('shortcutReferenceList');
+const shortcutSettingsModal=document.getElementById('shortcutSettingsModal');
+const settingsMaxStrokeSize=document.getElementById('settingsMaxStrokeSize');
+const settingsMaxTextSize=document.getElementById('settingsMaxTextSize');
+const btnCloseShortcutSettings=document.getElementById('btnCloseShortcutSettings');
+const btnCancelShortcutSettings=document.getElementById('btnCancelShortcutSettings');
+const btnSaveShortcutSettings=document.getElementById('btnSaveShortcutSettings');
+const btnImportSettings=document.getElementById('btnImportSettings');
+const btnExportSettingsJson=document.getElementById('btnExportSettingsJson');
+const btnExportSettingsCsv=document.getElementById('btnExportSettingsCsv');
+const btnResetShortcutDefaults=document.getElementById('btnResetShortcutDefaults');
+const settingsImportInput=document.getElementById('settingsImportInput');
+const shortcutToolRows=document.getElementById('shortcutToolRows');
+const shortcutActionRows=document.getElementById('shortcutActionRows');
+const shortcutSettingsStatus=document.getElementById('shortcutSettingsStatus');
 const fabricCanvases=new Map();
-const pageSizeMap=new Map();
+
 const savedStateByPage=new Map();
 const historyStack=[];
 let historyPointer=-1;
+const CLIPBOARD_OBJECT_PROPS=['annotationType','selectable','evented'];
+const KEYBOARD_PASTE_OFFSET=8;
+const DEFAULT_MAX_STROKE_SIZE=50;
+const DEFAULT_MAX_TEXT_SIZE=300;
+let objectClipboard=null;
+let clipboardPasteCount=0;
 
 const PAGE_SCALE_ADJUST=0.98;
 const ARROW_MODE_OPTIONS=['single','double','note'];
@@ -547,6 +809,8 @@ const HIGHLIGHT_MODE_OPTIONS=['pen','box','ellipse'];
 const PREF_KEY_ARROW_MODE='draftannotator.arrow.mode';
 const PREF_KEY_HIGHLIGHT_MODE='draftannotator.highlight.mode';
 const PREF_KEY_RECENT_COLORS='draftannotator.recentColors';
+const PREF_KEY_SHORTCUTS='draftannotator.shortcuts';
+const PREF_KEY_EDITOR_SETTINGS='draftannotator.editorSettings';
 let defaultPageSize={w:900,h:1200};
 let arrowMode='single';
 let highlightMode='pen';
@@ -554,13 +818,753 @@ let zoomFactor=1.0; // 1.0 = fit-to-width (100%)
 let shapeFillEnabled=false;
 let shapeFillOpacity=25;
 let activeContextPageNum=1;
+let suppressTextEditingLifecycle=false;
 const activePdfRenderTasks=new Map();
 const pendingPdfRefreshPages=new Set();
 let queuedZoomFactor=null;
 let zoomWorkerActive=false;
+let maxStrokeSize=DEFAULT_MAX_STROKE_SIZE;
+let maxTextSize=DEFAULT_MAX_TEXT_SIZE;
 
 const TOOL_NAMES={select:'Select',draw:'Pencil',line:'Line',arrow:'Arrow',rect:'Rectangle',circle:'Circle',text:'Text',highlight:'Highlight',cloud:'Rev Cloud'};
 const SHAPE_TOOLS=['line','arrow','rect','circle','cloud'];
+const SHORTCUT_SCHEMA_VERSION=2;
+const SHORTCUT_MODIFIER_CODES=new Set(['ShiftLeft','ShiftRight','ControlLeft','ControlRight','AltLeft','AltRight','MetaLeft','MetaRight']);
+const SHORTCUT_TOOL_FIELDS=[
+    {id:'select',label:'Select tool',description:'Switch to select mode.',defaults:['Digit1','KeyS']},
+    {id:'draw',label:'Pencil tool',description:'Switch to freehand drawing.',defaults:['Digit2','KeyD']},
+    {id:'text',label:'Text tool',description:'Place a text annotation.',defaults:['Digit3','KeyT']},
+    {id:'line',label:'Line tool',description:'Draw a straight line.',defaults:['Digit4','KeyL']},
+    {id:'arrow',label:'Arrow tool',description:'Draw an arrow annotation.',defaults:['Digit5','KeyA']},
+    {id:'rect',label:'Rectangle tool',description:'Draw a rectangle.',defaults:['Digit6','KeyR']},
+    {id:'circle',label:'Circle tool',description:'Draw a circle/ellipse.',defaults:['Digit7','KeyC']},
+    {id:'highlight',label:'Highlight tool',description:'Use the current highlight mode.',defaults:['Digit8','KeyH']},
+    {id:'cloud',label:'Revision cloud tool',description:'Draw a revision cloud.',defaults:['Digit9','KeyV']},
+];
+const SHORTCUT_ACTION_FIELDS=[
+    {id:'copy',label:'Copy selection',description:'Copy the current selected annotation(s).',defaults:['Mod+KeyC']},
+    {id:'cut',label:'Cut selection',description:'Copy and remove the current selection.',defaults:['Mod+KeyX']},
+    {id:'paste',label:'Paste',description:'Paste the internal annotation clipboard onto the current page.',defaults:['Mod+KeyV']},
+    {id:'selectAll',label:'Select all',description:'Select every annotation on the current page.',defaults:['Mod+KeyA']},
+    {id:'duplicate',label:'Duplicate selection',description:'Duplicate the current selected annotation(s).',defaults:['Mod+KeyD']},
+    {id:'save',label:'Save PDF',description:'Save even when focus is inside a field.',defaults:['Mod+KeyS']},
+    {id:'undo',label:'Undo',description:'Undo the last change.',defaults:['Mod+KeyZ']},
+    {id:'redo',label:'Redo',description:'Redo the next change.',defaults:['Mod+KeyY','Mod+Shift+KeyZ']},
+    {id:'deleteSelection',label:'Delete selection',description:'Delete the active selected annotation(s).',defaults:['Delete','Backspace']},
+    {id:'deselect',label:'Deselect / exit text edit',description:'Clear selection or exit active text editing.',defaults:['Escape']},
+    {id:'zoomIn',label:'Zoom in',description:'Increase zoom level.',defaults:['Mod+Equal','Mod+Shift+Equal','Mod+NumpadAdd']},
+    {id:'zoomOut',label:'Zoom out',description:'Decrease zoom level.',defaults:['Mod+Minus','Mod+NumpadSubtract']},
+    {id:'zoomFit',label:'Zoom fit',description:'Return to fit-to-width zoom.',defaults:['Mod+Digit0','Mod+Numpad0']},
+    {id:'nudgeLeft',label:'Nudge left',description:'Move selection left by 1 pixel.',defaults:['ArrowLeft']},
+    {id:'nudgeRight',label:'Nudge right',description:'Move selection right by 1 pixel.',defaults:['ArrowRight']},
+    {id:'nudgeUp',label:'Nudge up',description:'Move selection up by 1 pixel.',defaults:['ArrowUp']},
+    {id:'nudgeDown',label:'Nudge down',description:'Move selection down by 1 pixel.',defaults:['ArrowDown']},
+    {id:'nudgeLeftFast',label:'Nudge left x10',description:'Move selection left by 10 pixels.',defaults:['Shift+ArrowLeft']},
+    {id:'nudgeRightFast',label:'Nudge right x10',description:'Move selection right by 10 pixels.',defaults:['Shift+ArrowRight']},
+    {id:'nudgeUpFast',label:'Nudge up x10',description:'Move selection up by 10 pixels.',defaults:['Shift+ArrowUp']},
+    {id:'nudgeDownFast',label:'Nudge down x10',description:'Move selection down by 10 pixels.',defaults:['Shift+ArrowDown']},
+];
+const SHORTCUT_REFERENCE_ACTION_IDS=['undo','redo','save','copy','cut','paste','selectAll','duplicate','deleteSelection','deselect','zoomIn','zoomOut','zoomFit','nudgeLeft','nudgeRight','nudgeUp','nudgeDown'];
+const SHORTCUT_TOOL_FIELD_MAP=new Map(SHORTCUT_TOOL_FIELDS.map(def=>[def.id,def]));
+const SHORTCUT_ACTION_FIELD_MAP=new Map(SHORTCUT_ACTION_FIELDS.map(def=>[def.id,def]));
+const EDITOR_SETTINGS_SCHEMA_VERSION=1;
+const SETTINGS_EXPORT_SCHEMA_VERSION=1;
+const EDITOR_SETTINGS_LIMITS={
+    maxStrokeSize:{min:6,max:200,default:DEFAULT_MAX_STROKE_SIZE},
+    maxTextSize:{min:72,max:1000,default:DEFAULT_MAX_TEXT_SIZE}
+};
+let shortcutConfig=createDefaultShortcutConfig();
+let shortcutDraftConfig=null;
+let editorSettings=createDefaultEditorSettings();
+let editorSettingsDraft=null;
+let activeShortcutCapture=null;
+let pendingShortcutResetNotice='';
+let pendingEditorSettingsResetNotice='';
+const shortcutLookup={tools:new Map(),actions:new Map()};
+
+function createDefaultShortcutConfig(){
+    const config={version:SHORTCUT_SCHEMA_VERSION,tools:{},actions:{}};
+    SHORTCUT_TOOL_FIELDS.forEach(def=>{config.tools[def.id]=[...def.defaults];});
+    SHORTCUT_ACTION_FIELDS.forEach(def=>{config.actions[def.id]=[...def.defaults];});
+    return config;
+}
+
+function createDefaultEditorSettings(){
+    return {
+        version:EDITOR_SETTINGS_SCHEMA_VERSION,
+        maxStrokeSize:EDITOR_SETTINGS_LIMITS.maxStrokeSize.default,
+        maxTextSize:EDITOR_SETTINGS_LIMITS.maxTextSize.default
+    };
+}
+
+function cloneShortcutConfig(config){
+    return JSON.parse(JSON.stringify(config));
+}
+
+function cloneEditorSettings(settings){
+    return JSON.parse(JSON.stringify(settings));
+}
+
+function sanitizeShortcutBinding(binding){
+    return typeof binding==='string'?binding.trim():'';
+}
+
+function getShortcutBindingSourceArray(store,id){
+    if(!store||typeof store!=='object'||!Object.prototype.hasOwnProperty.call(store,id))return null;
+    const value=store[id];
+    if(Array.isArray(value))return value.slice();
+    if(typeof value==='string')return [value];
+    return null;
+}
+
+function mergeShortcutConfig(sourceConfig,{baseConfig=createDefaultShortcutConfig()}={}){
+    const safeBase=validateShortcutConfig(baseConfig).valid?cloneShortcutConfig(baseConfig):createDefaultShortcutConfig();
+    const merged={version:SHORTCUT_SCHEMA_VERSION,tools:{},actions:{}};
+    const source=sourceConfig&&typeof sourceConfig==='object'?sourceConfig:null;
+    const seen=new Set();
+    let recognized=false;
+    let mergedAny=!!(source&&source.version!==SHORTCUT_SCHEMA_VERSION);
+    let ignoredCount=0;
+
+    [['tools',SHORTCUT_TOOL_FIELDS],['actions',SHORTCUT_ACTION_FIELDS]].forEach(([scope,defs])=>{
+        const baseStore=safeBase[scope];
+        const sourceStore=source&&source[scope]&&typeof source[scope]==='object'?source[scope]:null;
+        merged[scope]={};
+        defs.forEach(def=>{
+            const baseBindings=getShortcutBindingSourceArray(baseStore,def.id)||[...def.defaults];
+            const sourceBindings=getShortcutBindingSourceArray(sourceStore,def.id);
+            if(sourceBindings){
+                recognized=true;
+                if(sourceBindings.length>def.defaults.length){
+                    ignoredCount+=sourceBindings.length-def.defaults.length;
+                    mergedAny=true;
+                }
+            }
+            merged[scope][def.id]=def.defaults.map((defaultBinding,index)=>{
+                const fallbackBinding=sanitizeShortcutBinding(baseBindings[index]!==undefined?baseBindings[index]:defaultBinding);
+                if(sourceBindings&&index<sourceBindings.length){
+                    const candidateBinding=sanitizeShortcutBinding(sourceBindings[index]);
+                    if(candidateBinding===''){
+                        if(candidateBinding!==fallbackBinding)mergedAny=true;
+                        return '';
+                    }
+                    if(isShortcutBindingValid(candidateBinding)&&!seen.has(candidateBinding)){
+                        if(candidateBinding!==fallbackBinding)mergedAny=true;
+                        seen.add(candidateBinding);
+                        return candidateBinding;
+                    }
+                    ignoredCount++;
+                    mergedAny=true;
+                }
+                if(fallbackBinding&&isShortcutBindingValid(fallbackBinding)&&!seen.has(fallbackBinding)){
+                    seen.add(fallbackBinding);
+                    return fallbackBinding;
+                }
+                if(fallbackBinding)mergedAny=true;
+                return '';
+            });
+        });
+    });
+
+    return {normalized:merged,recognized,merged:mergedAny,ignoredCount};
+}
+
+function mergeEditorSettings(sourceSettings,{baseSettings=createDefaultEditorSettings()}={}){
+    const baseValidation=validateEditorSettings(baseSettings);
+    const safeBase=baseValidation.valid?cloneEditorSettings(baseValidation.normalized):createDefaultEditorSettings();
+    const source=sourceSettings&&typeof sourceSettings==='object'?sourceSettings:null;
+    const merged={version:EDITOR_SETTINGS_SCHEMA_VERSION};
+    let recognized=false;
+    let mergedAny=!!(source&&source.version!==EDITOR_SETTINGS_SCHEMA_VERSION);
+    let ignoredCount=0;
+
+    Object.entries(EDITOR_SETTINGS_LIMITS).forEach(([key,limits])=>{
+        merged[key]=safeBase[key];
+        if(!source||!Object.prototype.hasOwnProperty.call(source,key))return;
+        recognized=true;
+        const parsedValue=parseInt(source[key],10);
+        if(Number.isInteger(parsedValue)&&parsedValue>=limits.min&&parsedValue<=limits.max){
+            if(parsedValue!==safeBase[key])mergedAny=true;
+            merged[key]=parsedValue;
+            return;
+        }
+        ignoredCount++;
+        mergedAny=true;
+    });
+
+    return {normalized:merged,recognized,merged:mergedAny,ignoredCount};
+}
+
+function getShortcutFieldDefinitions(scope){
+    return scope==='tools'?SHORTCUT_TOOL_FIELDS:SHORTCUT_ACTION_FIELDS;
+}
+
+function getShortcutFieldDefinition(scope,id){
+    return (scope==='tools'?SHORTCUT_TOOL_FIELD_MAP:SHORTCUT_ACTION_FIELD_MAP).get(id)||null;
+}
+
+function getShortcutFieldLabel(scope,id){
+    const def=getShortcutFieldDefinition(scope,id);
+    return def?def.label:id;
+}
+
+function getShortcutBindings(scope,id,sourceConfig=shortcutConfig){
+    const store=scope==='tools'?sourceConfig.tools:sourceConfig.actions;
+    const bindings=store&&Array.isArray(store[id])?store[id]:[];
+    return bindings.slice();
+}
+
+function getFirstShortcutBinding(scope,id,sourceConfig=shortcutConfig){
+    return getShortcutBindings(scope,id,sourceConfig).find(Boolean)||'';
+}
+
+function isShortcutBindingValid(binding){
+    if(binding==='')return true;
+    if(typeof binding!=='string')return false;
+    const parts=binding.split('+').filter(Boolean);
+    if(parts.length===0)return false;
+    const code=parts[parts.length-1];
+    const modifiers=parts.slice(0,-1);
+    if(!code||SHORTCUT_MODIFIER_CODES.has(code))return false;
+    if(new Set(modifiers).size!==modifiers.length)return false;
+    return modifiers.every(part=>part==='Mod'||part==='Alt'||part==='Shift');
+}
+
+function iterateShortcutBindings(config,visitor){
+    [['tools',SHORTCUT_TOOL_FIELDS],['actions',SHORTCUT_ACTION_FIELDS]].forEach(([scope,defs])=>{
+        defs.forEach(def=>{
+            const bindings=getShortcutBindings(scope,def.id,config);
+            def.defaults.forEach((_,index)=>{
+                visitor({scope,id:def.id,definition:def,index,binding:bindings[index]||''});
+            });
+        });
+    });
+}
+
+function validateShortcutConfig(config){
+    if(!config||config.version!==SHORTCUT_SCHEMA_VERSION)return {valid:false,reason:'version'};
+    if(!config.tools||!config.actions)return {valid:false,reason:'shape'};
+    if(Object.keys(config.tools).length!==SHORTCUT_TOOL_FIELDS.length)return {valid:false,reason:'tools'};
+    if(Object.keys(config.actions).length!==SHORTCUT_ACTION_FIELDS.length)return {valid:false,reason:'actions'};
+    const seen=new Map();
+    let invalidReason='';
+    iterateShortcutBindings(config,entry=>{
+        if(invalidReason)return;
+        const expectedLength=entry.definition.defaults.length;
+        const store=entry.scope==='tools'?config.tools:config.actions;
+        if(!Array.isArray(store[entry.id])||store[entry.id].length!==expectedLength){
+            invalidReason='slots';
+            return;
+        }
+        if(!isShortcutBindingValid(entry.binding)){
+            invalidReason='binding';
+            return;
+        }
+        if(entry.binding){
+            if(seen.has(entry.binding)){
+                invalidReason='duplicate';
+                return;
+            }
+            seen.set(entry.binding,entry);
+        }
+    });
+    return invalidReason?{valid:false,reason:invalidReason}:{valid:true};
+}
+
+function validateEditorSettings(settings){
+    if(!settings||settings.version!==EDITOR_SETTINGS_SCHEMA_VERSION)return {valid:false,reason:'version'};
+    const maxStrokeSizeValue=parseInt(settings.maxStrokeSize,10);
+    const maxTextSizeValue=parseInt(settings.maxTextSize,10);
+    if(!Number.isInteger(maxStrokeSizeValue)||maxStrokeSizeValue<EDITOR_SETTINGS_LIMITS.maxStrokeSize.min||maxStrokeSizeValue>EDITOR_SETTINGS_LIMITS.maxStrokeSize.max){
+        return {valid:false,reason:'maxStrokeSize'};
+    }
+    if(!Number.isInteger(maxTextSizeValue)||maxTextSizeValue<EDITOR_SETTINGS_LIMITS.maxTextSize.min||maxTextSizeValue>EDITOR_SETTINGS_LIMITS.maxTextSize.max){
+        return {valid:false,reason:'maxTextSize'};
+    }
+    return {
+        valid:true,
+        normalized:{
+            version:EDITOR_SETTINGS_SCHEMA_VERSION,
+            maxStrokeSize:maxStrokeSizeValue,
+            maxTextSize:maxTextSizeValue
+        }
+    };
+}
+
+function findShortcutConflict(config,binding,excludeEntry=null){
+    let found=null;
+    iterateShortcutBindings(config,entry=>{
+        if(found||!entry.binding||entry.binding!==binding)return;
+        if(excludeEntry&&excludeEntry.scope===entry.scope&&excludeEntry.id===entry.id&&excludeEntry.index===entry.index)return;
+        found=entry;
+    });
+    return found;
+}
+
+function serializeShortcutFromEvent(e){
+    if(!e||!e.code||SHORTCUT_MODIFIER_CODES.has(e.code))return '';
+    const parts=[];
+    if(e.ctrlKey||e.metaKey)parts.push('Mod');
+    if(e.altKey)parts.push('Alt');
+    if(e.shiftKey)parts.push('Shift');
+    parts.push(e.code);
+    return parts.join('+');
+}
+
+function formatShortcutCode(code,compact=false){
+    const labels={
+        Backspace:compact?'Bksp':'Backspace',
+        Delete:compact?'Del':'Delete',
+        Escape:'Esc',
+        Equal:'=',
+        Minus:'-',
+        Space:compact?'Space':'Space',
+        ArrowLeft:compact?'Left':'Left Arrow',
+        ArrowRight:compact?'Right':'Right Arrow',
+        ArrowUp:compact?'Up':'Up Arrow',
+        ArrowDown:compact?'Down':'Down Arrow',
+        NumpadAdd:compact?'Num+':'Numpad +',
+        NumpadSubtract:compact?'Num-':'Numpad -',
+        Numpad0:compact?'Num0':'Numpad 0',
+        Backquote:'`',
+        BracketLeft:'[',
+        BracketRight:']',
+        Semicolon:';',
+        Quote:"'",
+        Comma:',',
+        Period:'.',
+        Slash:'/',
+        Backslash:'\\'
+    };
+    if(labels[code])return labels[code];
+    if(/^Key[A-Z]$/.test(code))return code.slice(3);
+    if(/^Digit[0-9]$/.test(code))return code.slice(5);
+    if(/^Numpad[0-9]$/.test(code))return compact?`Num${code.slice(6)}`:`Numpad ${code.slice(6)}`;
+    if(/^F\d{1,2}$/.test(code))return code;
+    return code.replace(/^Numpad/,'Numpad ').replace(/([a-z])([A-Z])/g,'$1 $2');
+}
+
+function formatShortcutBinding(binding,{compact=false}={}){
+    if(!binding)return compact?'':'Unassigned';
+    const parts=binding.split('+');
+    const code=parts.pop();
+    const modifierLabels=parts.map(part=>{
+        if(part==='Mod')return compact?'Mod':'Ctrl/Command';
+        if(part==='Alt')return 'Alt';
+        if(part==='Shift')return 'Shift';
+        return part;
+    });
+    return [...modifierLabels,formatShortcutCode(code,compact)].join(compact?'+':' + ');
+}
+
+function formatToolBadge(bindings){
+    const compactBindings=bindings.filter(Boolean).slice(0,2).map(binding=>formatShortcutBinding(binding,{compact:true}));
+    if(compactBindings.length===0)return '';
+    const joined=compactBindings.join('/');
+    return joined.length<=9?joined:compactBindings[0];
+}
+
+function escapeHtml(str){
+    return String(str)
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;')
+        .replace(/'/g,'&#39;');
+}
+
+function rebuildShortcutLookup(){
+    shortcutLookup.tools.clear();
+    shortcutLookup.actions.clear();
+    SHORTCUT_TOOL_FIELDS.forEach(def=>{
+        getShortcutBindings('tools',def.id).forEach(binding=>{
+            if(binding)shortcutLookup.tools.set(binding,def.id);
+        });
+    });
+    SHORTCUT_ACTION_FIELDS.forEach(def=>{
+        getShortcutBindings('actions',def.id).forEach(binding=>{
+            if(binding)shortcutLookup.actions.set(binding,def.id);
+        });
+    });
+}
+
+function updateToolButtonShortcutHints(){
+    SHORTCUT_TOOL_FIELDS.forEach(def=>{
+        const button=document.querySelector(`.tool-btn[data-tool="${def.id}"]`);
+        if(!button)return;
+        const bindings=getShortcutBindings('tools',def.id);
+        const label=formatToolBadge(bindings);
+        const titleBindings=bindings.filter(Boolean).map(binding=>formatShortcutBinding(binding)).join(' / ');
+        const keyEl=button.querySelector('.tool-key');
+        if(keyEl)keyEl.textContent=label;
+        button.title=titleBindings?`${TOOL_NAMES[def.id]} (${titleBindings})`:TOOL_NAMES[def.id];
+    });
+}
+
+function renderShortcutReference(){
+    if(!shortcutReferenceList)return;
+    const toolItems=SHORTCUT_TOOL_FIELDS.map(def=>{
+        const bindings=getShortcutBindings('tools',def.id).filter(Boolean).map(binding=>formatShortcutBinding(binding,{compact:true})).join(' / ');
+        return `<span><b>${escapeHtml(bindings||'--')}</b> ${escapeHtml(TOOL_NAMES[def.id])}</span>`;
+    });
+    const actionItems=SHORTCUT_REFERENCE_ACTION_IDS.map(id=>{
+        const def=getShortcutFieldDefinition('actions',id);
+        const bindings=getShortcutBindings('actions',id).filter(Boolean).map(binding=>formatShortcutBinding(binding)).join(' / ');
+        return `<span class="shortcut-reference-full"><b>${escapeHtml(bindings||'Unassigned')}</b> ${escapeHtml(def.label)}</span>`;
+    });
+    shortcutReferenceList.innerHTML=[...toolItems,...actionItems].join('');
+}
+
+function updateShortcutDependentTitles(){
+    const actionTitle=(id,fallback)=>getShortcutBindings('actions',id).filter(Boolean).map(binding=>formatShortcutBinding(binding)).join(' / ')||fallback;
+    if(btnUndo)btnUndo.title=`Undo (${actionTitle('undo','Unassigned')})`;
+    if(btnRedo)btnRedo.title=`Redo (${actionTitle('redo','Unassigned')})`;
+    if(btnSavePdf)btnSavePdf.title=`Save PDF (${actionTitle('save','Unassigned')})`;
+    if(btnShortcutSettings)btnShortcutSettings.title='Settings';
+}
+
+function renderInitialShortcutHint(){
+    if(!initialShortcutHint)return;
+    const saveHint=formatShortcutBinding(getFirstShortcutBinding('actions','save'));
+    const undoHint=formatShortcutBinding(getFirstShortcutBinding('actions','undo'));
+    const redoHint=formatShortcutBinding(getFirstShortcutBinding('actions','redo'));
+    initialShortcutHint.textContent=`Shortcuts are customizable in Settings. Save: ${saveHint} | Undo: ${undoHint} | Redo: ${redoHint}`;
+}
+
+function refreshShortcutUI(){
+    updateToolButtonShortcutHints();
+    renderShortcutReference();
+    updateShortcutDependentTitles();
+    renderInitialShortcutHint();
+}
+
+function getCurrentEditorSettings(){
+    return cloneEditorSettings(editorSettings);
+}
+
+function persistEditorSettings(){
+    try{localStorage.setItem(PREF_KEY_EDITOR_SETTINGS,JSON.stringify(getCurrentEditorSettings()));}catch(e){}
+
+}
+
+function applyEditorSettings(settings,{persist=false}={}){
+    editorSettings=cloneEditorSettings(settings);
+    maxStrokeSize=editorSettings.maxStrokeSize;
+    maxTextSize=editorSettings.maxTextSize;
+    currentStrokeWidth=clampNumber(currentStrokeWidth,1,maxStrokeSize);
+    currentFontSize=clampNumber(currentFontSize,8,maxTextSize);
+    if(activeTool==='draw'){
+        fabricCanvases.forEach(c=>{if(c.freeDrawingBrush)c.freeDrawingBrush.width=currentStrokeWidth;});
+    }else if(activeTool==='highlight'&&highlightMode==='pen'){
+        fabricCanvases.forEach(c=>{if(c.freeDrawingBrush)c.freeDrawingBrush.width=getHighlightBrushWidth();});
+    }
+    syncSizeControl();
+    if(persist)persistEditorSettings();
+}
+
+function getCurrentShortcutConfig(){
+    return cloneShortcutConfig(shortcutConfig);
+}
+
+function persistShortcutPreference(){
+    try{localStorage.setItem(PREF_KEY_SHORTCUTS,JSON.stringify(getCurrentShortcutConfig()));}catch(e){}
+}
+
+function applyShortcutConfig(config,{persist=false}={}){
+    shortcutConfig=cloneShortcutConfig(config);
+    rebuildShortcutLookup();
+    refreshShortcutUI();
+    if(persist)persistShortcutPreference();
+}
+
+function loadShortcutPreference(){
+    let parsedConfig=null;
+    try{
+        const raw=localStorage.getItem(PREF_KEY_SHORTCUTS);
+        if(raw)parsedConfig=JSON.parse(raw);
+    }catch(e){}
+    const mergeResult=mergeShortcutConfig(parsedConfig,{baseConfig:createDefaultShortcutConfig()});
+    applyShortcutConfig(mergeResult.normalized,{persist:true});
+    if(parsedConfig&&(!mergeResult.recognized||mergeResult.merged||mergeResult.ignoredCount>0)){
+        pendingShortcutResetNotice='Shortcut settings were merged with the latest defaults. Unknown or conflicting entries were ignored.';
+    }
+}
+
+function loadEditorSettings(){
+    let parsedSettings=null;
+    try{
+        const raw=localStorage.getItem(PREF_KEY_EDITOR_SETTINGS);
+        if(raw)parsedSettings=JSON.parse(raw);
+    }catch(e){}
+    const mergeResult=mergeEditorSettings(parsedSettings,{baseSettings:createDefaultEditorSettings()});
+    applyEditorSettings(mergeResult.normalized,{persist:true});
+    if(parsedSettings&&(!mergeResult.recognized||mergeResult.merged||mergeResult.ignoredCount>0)){
+        pendingEditorSettingsResetNotice='Editor limits were merged with the latest defaults. Unknown or invalid values were ignored.';
+    }
+}
+
+function getSettingsExportSnapshot({preferDraft=true}={}){
+    return {
+        shortcutConfig:preferDraft&&shortcutDraftConfig?cloneShortcutConfig(shortcutDraftConfig):getCurrentShortcutConfig(),
+        editorSettings:preferDraft&&editorSettingsDraft?cloneEditorSettings(editorSettingsDraft):getCurrentEditorSettings()
+    };
+}
+
+function createSettingsExportPayload({preferDraft=true}={}){
+    const snapshot=getSettingsExportSnapshot({preferDraft});
+    return {
+        app:'DraftAnnotator',
+        type:'settings-export',
+        version:SETTINGS_EXPORT_SCHEMA_VERSION,
+        exportedAt:new Date().toISOString(),
+        shortcutConfig:snapshot.shortcutConfig,
+        editorSettings:snapshot.editorSettings
+    };
+}
+
+function getSettingsExportFileStem(){
+    const now=new Date();
+    const parts=[
+        now.getFullYear(),
+        String(now.getMonth()+1).padStart(2,'0'),
+        String(now.getDate()).padStart(2,'0'),
+        '-',
+        String(now.getHours()).padStart(2,'0'),
+        String(now.getMinutes()).padStart(2,'0'),
+        String(now.getSeconds()).padStart(2,'0')
+    ];
+    return `draftannotator-settings-${parts.join('')}`;
+}
+
+function downloadTextFile(filename,text,mimeType){
+    const blob=new Blob([text],{type:mimeType});
+    const url=URL.createObjectURL(blob);
+    const link=document.createElement('a');
+    link.href=url;
+    link.download=filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+function escapeCsvValue(value){
+    const text=String(value??'');
+    return /[",\r\n]/.test(text)?`"${text.replace(/"/g,'""')}"`:text;
+}
+
+function createSettingsCsvText({preferDraft=true}={}){
+    const snapshot=getSettingsExportSnapshot({preferDraft});
+    const rows=[['section','id','slot','value']];
+    SHORTCUT_TOOL_FIELDS.forEach(def=>{
+        const bindings=getShortcutBindings('tools',def.id,snapshot.shortcutConfig);
+        def.defaults.forEach((_,index)=>{
+            rows.push(['tools',def.id,String(index+1),bindings[index]||'']);
+        });
+    });
+    SHORTCUT_ACTION_FIELDS.forEach(def=>{
+        const bindings=getShortcutBindings('actions',def.id,snapshot.shortcutConfig);
+        def.defaults.forEach((_,index)=>{
+            rows.push(['actions',def.id,String(index+1),bindings[index]||'']);
+        });
+    });
+    Object.keys(EDITOR_SETTINGS_LIMITS).forEach(key=>{
+        rows.push(['editor',key,'',String(snapshot.editorSettings[key]??'')]);
+    });
+    return rows.map(row=>row.map(escapeCsvValue).join(',')).join('\r\n');
+}
+
+function exportSettingsAsJson(){
+    const filename=`${getSettingsExportFileStem()}.json`;
+    const payload=createSettingsExportPayload();
+    downloadTextFile(filename,JSON.stringify(payload,null,2),'application/json;charset=utf-8');
+    setShortcutSettingsStatus('JSON settings exported.','success');
+}
+
+function exportSettingsAsCsv(){
+    const filename=`${getSettingsExportFileStem()}.csv`;
+    downloadTextFile(filename,createSettingsCsvText(),'text/csv;charset=utf-8');
+    setShortcutSettingsStatus('CSV settings exported.','success');
+}
+
+function parseCsvRows(text){
+    const rows=[];
+    let row=[];
+    let value='';
+    let inQuotes=false;
+    const input=(text||'').replace(/^\uFEFF/,'');
+    for(let i=0;i<input.length;i++){
+        const ch=input[i];
+        if(inQuotes){
+            if(ch==='"'){
+                if(input[i+1]==='"'){
+                    value+='"';
+                    i++;
+                }else{
+                    inQuotes=false;
+                }
+            }else{
+                value+=ch;
+            }
+            continue;
+        }
+        if(ch==='"'){
+            inQuotes=true;
+            continue;
+        }
+        if(ch===','){
+            row.push(value);
+            value='';
+            continue;
+        }
+        if(ch==='\r'||ch==='\n'){
+            if(ch==='\r'&&input[i+1]==='\n')i++;
+            row.push(value);
+            const hasContent=row.some(cell=>String(cell).trim()!=='');
+            if(hasContent)rows.push(row);
+            row=[];
+            value='';
+            continue;
+        }
+        value+=ch;
+    }
+    row.push(value);
+    if(row.some(cell=>String(cell).trim()!==''))rows.push(row);
+    return rows;
+}
+
+function extractShortcutConfigFromObject(source){
+    if(!source||typeof source!=='object')return null;
+    const root=source.settings&&typeof source.settings==='object'?source.settings:source;
+    if(root.shortcutConfig&&typeof root.shortcutConfig==='object')return root.shortcutConfig;
+    if(root.shortcuts&&typeof root.shortcuts==='object')return root.shortcuts;
+    if((root.tools&&typeof root.tools==='object')||(root.actions&&typeof root.actions==='object'))return root;
+    return null;
+}
+
+function extractEditorSettingsFromObject(source){
+    if(!source||typeof source!=='object')return null;
+    const root=source.settings&&typeof source.settings==='object'?source.settings:source;
+    if(root.editorSettings&&typeof root.editorSettings==='object')return root.editorSettings;
+    if(root.editor&&typeof root.editor==='object')return root.editor;
+    if(root.limits&&typeof root.limits==='object')return root.limits;
+    if(Object.keys(EDITOR_SETTINGS_LIMITS).some(key=>Object.prototype.hasOwnProperty.call(root,key)))return root;
+    return null;
+}
+
+function parseSettingsJsonText(text){
+    let parsed;
+    try{
+        parsed=JSON.parse(text);
+    }catch(e){
+        throw new Error('JSON settings file could not be parsed.');
+    }
+    const shortcutConfig=extractShortcutConfigFromObject(parsed);
+    const editorSettings=extractEditorSettingsFromObject(parsed);
+    return {
+        shortcutConfig,
+        editorSettings,
+        hasShortcutData:!!shortcutConfig,
+        hasEditorData:!!editorSettings
+    };
+}
+
+function parseSettingsCsvText(text){
+    const rows=parseCsvRows(text);
+    if(rows.length<2)throw new Error('CSV settings file is empty.');
+    const header=rows[0].map(cell=>String(cell||'').trim().toLowerCase());
+    const sectionIndex=header.findIndex(cell=>['section','scope','type','category'].includes(cell));
+    const idIndex=header.findIndex(cell=>['id','key','name'].includes(cell));
+    const slotIndex=header.findIndex(cell=>['slot','index','position'].includes(cell));
+    const valueIndex=header.findIndex(cell=>['value','binding','setting'].includes(cell));
+    if(sectionIndex<0||idIndex<0||valueIndex<0)throw new Error('CSV settings need section, id, and value columns.');
+
+    const shortcutConfig={tools:{},actions:{}};
+    const editorSettings={};
+    let hasShortcutData=false;
+    let hasEditorData=false;
+
+    rows.slice(1).forEach(row=>{
+        const section=String(row[sectionIndex]||'').trim().toLowerCase();
+        const id=String(row[idIndex]||'').trim();
+        const value=row[valueIndex]!==undefined?String(row[valueIndex]).trim():'';
+        const slotValue=slotIndex>=0?String(row[slotIndex]||'').trim():'';
+        if(!section||!id)return;
+        if(section==='tools'||section==='tool'){
+            const slot=Math.max(0,(parseInt(slotValue,10)||1)-1);
+            if(!Array.isArray(shortcutConfig.tools[id]))shortcutConfig.tools[id]=[];
+            shortcutConfig.tools[id][slot]=value;
+            hasShortcutData=true;
+            return;
+        }
+        if(section==='actions'||section==='action'){
+            const slot=Math.max(0,(parseInt(slotValue,10)||1)-1);
+            if(!Array.isArray(shortcutConfig.actions[id]))shortcutConfig.actions[id]=[];
+            shortcutConfig.actions[id][slot]=value;
+            hasShortcutData=true;
+            return;
+        }
+        if(section==='editor'||section==='setting'||section==='settings'){
+            editorSettings[id]=value;
+            hasEditorData=true;
+        }
+    });
+
+    return {
+        shortcutConfig:hasShortcutData?shortcutConfig:null,
+        editorSettings:hasEditorData?editorSettings:null,
+        hasShortcutData,
+        hasEditorData
+    };
+}
+
+function parseImportedSettingsText(text,fileName=''){
+    const normalizedName=(fileName||'').toLowerCase();
+    if(normalizedName.endsWith('.csv'))return parseSettingsCsvText(text);
+    if(normalizedName.endsWith('.json'))return parseSettingsJsonText(text);
+    const trimmed=(text||'').trim();
+    return trimmed.startsWith('{')?parseSettingsJsonText(text):parseSettingsCsvText(text);
+}
+
+function applyImportedSettingsPayload(payload){
+    const baseShortcutConfig=shortcutDraftConfig?cloneShortcutConfig(shortcutDraftConfig):getCurrentShortcutConfig();
+    const baseEditorSettings=editorSettingsDraft?cloneEditorSettings(editorSettingsDraft):getCurrentEditorSettings();
+    const shortcutMerge=payload&&payload.shortcutConfig
+        ? mergeShortcutConfig(payload.shortcutConfig,{baseConfig:baseShortcutConfig})
+        : {recognized:false,merged:false,ignoredCount:0,normalized:baseShortcutConfig};
+    const editorMerge=payload&&payload.editorSettings
+        ? mergeEditorSettings(payload.editorSettings,{baseSettings:baseEditorSettings})
+        : {recognized:false,merged:false,ignoredCount:0,normalized:baseEditorSettings};
+
+    if(!shortcutMerge.recognized&&!editorMerge.recognized){
+        throw new Error('No supported settings were found in that file.');
+    }
+
+    activeShortcutCapture=null;
+    if(shortcutMerge.recognized){
+        shortcutDraftConfig=cloneShortcutConfig(shortcutMerge.normalized);
+        applyShortcutConfig(shortcutMerge.normalized,{persist:true});
+    }
+    if(editorMerge.recognized){
+        editorSettingsDraft=cloneEditorSettings(editorMerge.normalized);
+        applyEditorSettings(editorMerge.normalized,{persist:true});
+    }
+    renderShortcutSettings();
+    renderEditorSettingsDraft();
+    const ignoredCount=(shortcutMerge.ignoredCount||0)+(editorMerge.ignoredCount||0);
+    const mergedNotice=shortcutMerge.merged||editorMerge.merged||ignoredCount>0
+        ? ' Settings were merged with current known fields and unsupported entries were ignored.'
+        : '';
+    setShortcutSettingsStatus(`Settings imported and saved.${mergedNotice}`,ignoredCount>0?'info':'success');
+    showMsg(ignoredCount>0?'Settings imported with cleanup':'Settings imported');
+}
+
+async function importSettingsFromFile(file){
+    if(!file)return;
+    const text=await file.text();
+    const payload=parseImportedSettingsText(text,file.name||'');
+    applyImportedSettingsPayload(payload);
+}
 
 function loadArrowModePreference(){
     try{
@@ -585,6 +1589,7 @@ function loadHighlightModePreference(){
 function persistHighlightModePreference(){
     try{localStorage.setItem(PREF_KEY_HIGHLIGHT_MODE,highlightMode);}catch(e){}
 }
+
 
 // ─── HISTORY SYSTEM ─────────────────────────────────
 function getSerializedCanvasState(c){
@@ -634,13 +1639,11 @@ function saveCanvasState(c){
     }
     if(historyStack[historyPointer]?.state===state){
         c._lastSavedState=state;
-        c.lastModifiedTime=Date.now();
         recomputeUnsavedChanges();
         return;
     }
     pushHistoryEntry(c._pageNum,state);
     c._lastSavedState=state;
-    c.lastModifiedTime=Date.now();
     recomputeUnsavedChanges();
 }
 
@@ -653,6 +1656,7 @@ function undo(){
     canvas._restoring=true;
     canvas.loadFromJSON(entry.state,()=>{
         canvas._restoring=false;
+        refreshCanvasTextRendering(canvas);
         canvas.renderAll();
         canvas.forEachObject(o=>{o.selectable=activeTool==='select';o.evented=activeTool==='select';});
         canvas._lastSavedState=entry.state;
@@ -674,6 +1678,7 @@ function redo(){
     canvas._restoring=true;
     canvas.loadFromJSON(entry.state,()=>{
         canvas._restoring=false;
+        refreshCanvasTextRendering(canvas);
         canvas.renderAll();
         canvas.forEachObject(o=>{o.selectable=activeTool==='select';o.evented=activeTool==='select';});
         canvas._lastSavedState=entry.state;
@@ -721,6 +1726,99 @@ function rgbaFromHex(hex,alpha){
 function isTextObject(obj){
     return !!obj&&(obj.type==='i-text'||obj.type==='text'||obj.type==='textbox');
 }
+
+function updateEditingTextLayout(obj){
+    if(!isTextObject(obj)||!obj.isEditing)return;
+    if(typeof obj._updateTextarea==='function'){
+        try{obj._updateTextarea();}catch(e){}
+    }
+    if(typeof obj.updateTextareaPosition==='function'){
+        try{obj.updateTextareaPosition();}catch(e){}
+    }
+    if(obj.hiddenTextarea){
+        const selectionStart=Number.isFinite(obj.selectionStart)?obj.selectionStart:0;
+        const selectionEnd=Number.isFinite(obj.selectionEnd)?obj.selectionEnd:selectionStart;
+        try{
+            obj.hiddenTextarea.selectionStart=selectionStart;
+            obj.hiddenTextarea.selectionEnd=selectionEnd;
+        }catch(e){}
+    }
+}
+
+function configureTextObjectRendering(obj){
+    if(!isTextObject(obj))return;
+    obj.set({objectCaching:false,noScaleCache:false});
+    obj.dirty=true;
+    if(!obj.isEditing&&obj.initDimensions)obj.initDimensions();
+    obj.setCoords();
+    updateEditingTextLayout(obj);
+}
+
+function refreshCanvasTextRendering(canvas){
+    if(!canvas)return;
+    canvas.getObjects().forEach(obj=>{
+        if(isTextObject(obj))configureTextObjectRendering(obj);
+    });
+}
+
+function captureEditingTextStates(){
+    const states=[];
+    fabricCanvases.forEach(canvas=>{
+        const activeObj=canvas.getActiveObject();
+        if(!activeObj||!isTextObject(activeObj)||!activeObj.isEditing)return;
+        states.push({
+            canvas,
+            object:activeObj,
+            selectionStart:Number.isFinite(activeObj.selectionStart)?activeObj.selectionStart:0,
+            selectionEnd:Number.isFinite(activeObj.selectionEnd)?activeObj.selectionEnd:(Number.isFinite(activeObj.selectionStart)?activeObj.selectionStart:0)
+        });
+    });
+    if(!states.length)return states;
+    suppressTextEditingLifecycle=true;
+    try{
+        states.forEach(state=>{
+            if(state.object&&typeof state.object.exitEditing==='function')state.object.exitEditing();
+            if(state.canvas&&state.object&&state.object.canvas===state.canvas)state.canvas.setActiveObject(state.object);
+        });
+    }finally{
+        suppressTextEditingLifecycle=false;
+    }
+    return states;
+}
+
+function restoreEditingTextStates(states,{resumeEditing=false}={}){
+    if(!Array.isArray(states)||!states.length)return;
+    suppressTextEditingLifecycle=true;
+    try{
+        states.forEach(state=>{
+            const {canvas,object,selectionStart,selectionEnd}=state;
+            if(!canvas||!object||object.canvas!==canvas)return;
+            canvas.setActiveObject(object);
+            if(object.initDimensions)object.initDimensions();
+            if(resumeEditing&&typeof object.enterEditing==='function'){
+                object.enterEditing();
+                object.selectionStart=selectionStart;
+                object.selectionEnd=selectionEnd;
+            }
+            configureTextObjectRendering(object);
+            if(resumeEditing)updateEditingTextLayout(object);
+            canvas.requestRenderAll();
+        });
+    }finally{
+        suppressTextEditingLifecycle=false;
+    }
+}
+
+function configureFabricTextDefaults(){
+    const textClasses=[fabric.Text,fabric.IText,fabric.Textbox];
+    textClasses.forEach(Klass=>{
+        if(!Klass||!Klass.prototype)return;
+        Klass.prototype.objectCaching=false;
+        Klass.prototype.noScaleCache=false;
+    });
+}
+
+configureFabricTextDefaults();
 
 function isArrowGroup(obj){
     return !!obj&&obj.type==='group'&&(obj.annotationType==='arrow'||obj.annotationType==='doubleArrow');
@@ -787,6 +1885,191 @@ function getActiveSelectionContext(){
     return null;
 }
 
+function clonePlainData(value){
+    return JSON.parse(JSON.stringify(value));
+}
+
+function getClipboardTargetCanvas(){
+    const context=getActiveSelectionContext();
+    if(context&&context.canvas)return context.canvas;
+    const pageCandidates=[currentVisiblePage,activeContextPageNum,objectClipboard&&objectClipboard.sourcePageNum];
+    for(const pageNum of pageCandidates){
+        if(!Number.isFinite(pageNum))continue;
+        const canvas=fabricCanvases.get(pageNum);
+        if(canvas)return canvas;
+    }
+    return null;
+}
+
+function activateCanvasObjects(canvas,objects){
+    if(!canvas)return;
+    canvas.discardActiveObject();
+    if(objects.length===1){
+        canvas.setActiveObject(objects[0]);
+    }else if(objects.length>1){
+        const selection=new fabric.ActiveSelection(objects,{canvas});
+        selection.setCoords();
+        canvas.setActiveObject(selection);
+    }
+    canvas.requestRenderAll();
+    activeContextPageNum=canvas._pageNum||activeContextPageNum;
+    syncSizeControl();
+}
+
+function serializeObjectsForClipboard(objects){
+    return objects.map(obj=>obj.toObject(CLIPBOARD_OBJECT_PROPS));
+}
+
+function copySelectionToClipboard({silent=false,context=null}={}){
+    const selectionContext=context||getActiveSelectionContext();
+    if(!selectionContext||!selectionContext.objects.length)return false;
+    objectClipboard={
+        sourcePageNum:selectionContext.pageNum,
+        objects:serializeObjectsForClipboard(selectionContext.objects)
+    };
+    clipboardPasteCount=0;
+    if(!silent){
+        showMsg(selectionContext.objects.length>1?`Copied ${selectionContext.objects.length} objects`:'Copied');
+    }
+    return true;
+}
+
+function enlivenClipboardObjects(serializedObjects){
+    return new Promise(resolve=>{
+        fabric.util.enlivenObjects(serializedObjects,objects=>resolve(objects||[]),null,(serialized,obj)=>{
+            if(serialized&&serialized.annotationType)obj.annotationType=serialized.annotationType;
+        });
+    });
+}
+
+function prepareClipboardObject(obj){
+    if(!obj)return;
+    obj.set({selectable:true,evented:true});
+    if(isTextObject(obj))configureTextObjectRendering(obj);
+    if(isArrowGroup(obj)){
+        obj.set({lockScalingX:true,lockScalingY:true});
+        const line=(obj._objects||[]).find(part=>part.type==='line');
+        const strokeColor=(line&&line.stroke)||currentColor;
+        setArrowGroupAppearance(obj,getStrokeWidthForObject(obj),strokeColor);
+    }
+    obj.setCoords();
+}
+
+function removeSelectionFromCanvas(context){
+    if(!context||!context.canvas||!context.activeObj)return false;
+    const {canvas,activeObj}=context;
+    canvas._suppressHistory=true;
+    if(activeObj.type==='activeSelection'){
+        activeObj.getObjects().forEach(obj=>canvas.remove(obj));
+        canvas.discardActiveObject();
+    }else{
+        canvas.remove(activeObj);
+    }
+    canvas._suppressHistory=false;
+    canvas.requestRenderAll();
+    saveCanvasState(canvas);
+    syncSizeControl();
+    return true;
+}
+
+function cutSelectionToClipboard(){
+    const context=getActiveSelectionContext();
+    if(!context||!context.objects.length)return false;
+    if(!copySelectionToClipboard({silent:true,context}))return false;
+    if(!removeSelectionFromCanvas(context))return false;
+    showMsg(context.objects.length>1?`Cut ${context.objects.length} objects`:'Cut');
+    return true;
+}
+
+async function pasteClipboardObjects(payload=objectClipboard,{targetCanvas=null,offsetMultiplier=null,announce=true}={}){
+    if(!payload||!Array.isArray(payload.objects)||!payload.objects.length){
+        if(announce)showMsg('Clipboard empty');
+        return false;
+    }
+    const preferSourceCanvas=!targetCanvas&&Number.isFinite(payload.sourcePageNum);
+    const sourceCanvas=preferSourceCanvas?fabricCanvases.get(payload.sourcePageNum):null;
+    const canvas=targetCanvas||sourceCanvas||getClipboardTargetCanvas();
+    if(!canvas){
+        if(announce)showMsg('Scroll to a rendered page before pasting');
+        return false;
+    }
+    if(activeTool!=='select')setActiveTool('select');
+    clearActiveSelectionsExcept(canvas._pageNum);
+    const objects=await enlivenClipboardObjects(clonePlainData(payload.objects));
+    if(!objects.length){
+        if(announce)showMsg('Clipboard empty');
+        return false;
+    }
+    const nextOffset=Number.isFinite(offsetMultiplier)?offsetMultiplier:(clipboardPasteCount+1);
+    const delta=KEYBOARD_PASTE_OFFSET*nextOffset;
+    const previousVisiblePage=currentVisiblePage;
+    canvas._suppressHistory=true;
+    canvas.discardActiveObject();
+    objects.forEach(obj=>{
+        obj.set({
+            left:(Number(obj.left)||0)+delta,
+            top:(Number(obj.top)||0)+delta
+        });
+        prepareClipboardObject(obj);
+        canvas.add(obj);
+    });
+    canvas._suppressHistory=false;
+    activateCanvasObjects(canvas,objects);
+    saveCanvasState(canvas);
+    currentVisiblePage=canvas._pageNum||currentVisiblePage;
+    updatePageIndicator();
+    if(payload===objectClipboard)clipboardPasteCount=nextOffset;
+    if(preferSourceCanvas&&previousVisiblePage!==currentVisiblePage){
+        const pageContainer=document.querySelector(`[data-page-num="${currentVisiblePage}"]`);
+        if(pageContainer)pageContainer.scrollIntoView({behavior:'smooth',block:'start'});
+    }
+    if(announce){
+        showMsg(objects.length>1?`Pasted ${objects.length} objects`:'Pasted');
+    }
+    return true;
+}
+
+function duplicateActiveSelection(){
+    const context=getActiveSelectionContext();
+    if(!context||!context.objects.length)return false;
+    const payload={
+        sourcePageNum:context.pageNum,
+        objects:serializeObjectsForClipboard(context.objects)
+    };
+    void pasteClipboardObjects(payload,{targetCanvas:context.canvas});
+    return true;
+}
+
+function selectAllOnActivePage(){
+    const canvas=getClipboardTargetCanvas();
+    if(!canvas)return false;
+    const objects=canvas.getObjects().slice();
+    if(!objects.length){
+        showMsg('Nothing to select');
+        return true;
+    }
+    if(activeTool!=='select')setActiveTool('select');
+    clearActiveSelectionsExcept(canvas._pageNum);
+    activateCanvasObjects(canvas,objects);
+    showMsg(objects.length>1?`Selected ${objects.length} objects`:'Selected');
+    return true;
+}
+
+function nudgeActiveSelection(dx,dy){
+    const context=getActiveSelectionContext();
+    if(!context||!context.objects.length)return false;
+    context.objects.forEach(obj=>{
+        obj.set({
+            left:(Number(obj.left)||0)+dx,
+            top:(Number(obj.top)||0)+dy
+        });
+        obj.setCoords();
+    });
+    activateCanvasObjects(context.canvas,context.objects);
+    saveCanvasState(context.canvas);
+    return true;
+}
+
 function getStrokeWidthForObject(obj){
     if(!obj)return currentStrokeWidth;
     if(isArrowGroup(obj)){
@@ -798,9 +2081,9 @@ function getStrokeWidthForObject(obj){
 
 function getControlStrokeWidthForObject(obj){
     if(isHighlightPenObject(obj)){
-        return clampNumber(Math.round(getStrokeWidthForObject(obj)/3),1,12);
+        return clampNumber(Math.round(getStrokeWidthForObject(obj)/3),1,maxStrokeSize);
     }
-    return clampNumber(Math.round(getStrokeWidthForObject(obj)),1,12);
+    return clampNumber(Math.round(getStrokeWidthForObject(obj)),1,maxStrokeSize);
 }
 
 function computeArrowHeadSize(length,strokeWidth){
@@ -853,10 +2136,29 @@ function setObjectStrokeWidth(obj,width){
     if(Object.prototype.hasOwnProperty.call(obj,'strokeWidth'))obj.set('strokeWidth',width);
 }
 
+function applyTextStyleUpdate(obj,styleUpdate){
+    if(!isTextObject(obj)||!styleUpdate)return;
+    const selectionStart=Number.isFinite(obj.selectionStart)?obj.selectionStart:0;
+    const selectionEnd=Number.isFinite(obj.selectionEnd)?obj.selectionEnd:selectionStart;
+    const textLength=((obj.text||'')+'').length;
+    const hasPartialSelection=!!(
+        obj.isEditing&&
+        typeof obj.setSelectionStyles==='function'&&
+        selectionEnd>selectionStart&&
+        !(selectionStart===0&&selectionEnd===textLength)
+    );
+    if(hasPartialSelection)obj.setSelectionStyles(styleUpdate,selectionStart,selectionEnd);
+    else obj.set(styleUpdate);
+    if((Object.prototype.hasOwnProperty.call(styleUpdate,'fontSize')||Object.prototype.hasOwnProperty.call(styleUpdate,'fontFamily'))&&obj.initDimensions){
+        obj.initDimensions();
+    }
+    configureTextObjectRendering(obj);
+}
+
 function setObjectColor(obj,color){
     if(!obj)return;
     if(isTextObject(obj)){
-        obj.set({fill:color});
+        applyTextStyleUpdate(obj,{fill:color});
         return;
     }
     if(isHighlightPenObject(obj)){
@@ -902,13 +2204,7 @@ function getSizeControlMode(context){
 
 function applyTextStyleToObject(obj,fontSize,fontFamily){
     if(!isTextObject(obj))return;
-    const styleUpdate={fontSize,fontFamily};
-    if(obj.type==='i-text'&&obj.isEditing&&obj.selectionStart!==obj.selectionEnd&&obj.setSelectionStyles){
-        obj.setSelectionStyles(styleUpdate,obj.selectionStart,obj.selectionEnd);
-    }
-    obj.set(styleUpdate);
-    if(obj.initDimensions)obj.initDimensions();
-    obj.setCoords();
+    applyTextStyleUpdate(obj,{fontSize,fontFamily});
 }
 
 // ─── REVISION CLOUD GENERATOR ───────────────────────
@@ -1013,7 +2309,7 @@ function setActiveTool(t){
 function setColor(color){
     currentColor=color;
     document.querySelectorAll('.color-swatch').forEach(s=>s.classList.toggle('active-color',s.dataset.color===color));
-    customColorInput.value=color;
+
     // Sync popover controls
     const pw=document.getElementById('popoverWheel');
     const hi=document.getElementById('hexInput');
@@ -1057,12 +2353,12 @@ function syncSizeControl(){
         let textSize=currentFontSize;
         if(context&&context.objects.length>0&&context.objects.every(isTextObject)){
             const refText=context.objects.find(isTextObject);
-            textSize=clampNumber(parseInt(refText.fontSize,10)||currentFontSize,8,72);
+            textSize=clampNumber(parseInt(refText.fontSize,10)||currentFontSize,8,maxTextSize);
             currentFontSize=textSize;
         }
-        sizeSlider.min=8;sizeSlider.max=72;sizeSlider.step=1;
+        sizeSlider.min=8;sizeSlider.max=maxTextSize;sizeSlider.step=1;
         sizeSlider.value=textSize;sizeNumber.value=textSize;
-        sizeNumber.min=8;sizeNumber.max=72;
+        sizeNumber.min=8;sizeNumber.max=maxTextSize;
         sizeLabel.textContent='Sz';
     }else{
         let strokeSize=currentStrokeWidth;
@@ -1073,9 +2369,9 @@ function syncSizeControl(){
                 currentStrokeWidth=strokeSize;
             }
         }
-        sizeSlider.min=1;sizeSlider.max=12;sizeSlider.step=1;
+        sizeSlider.min=1;sizeSlider.max=maxStrokeSize;sizeSlider.step=1;
         sizeSlider.value=strokeSize;sizeNumber.value=strokeSize;
-        sizeNumber.min=1;sizeNumber.max=12;
+        sizeNumber.min=1;sizeNumber.max=maxStrokeSize;
         sizeLabel.textContent='Wt';
     }
 
@@ -1108,7 +2404,7 @@ function handleSizeChange(val){
     const context=getActiveSelectionContext();
     const mode=getSizeControlMode(context);
     if(mode==='text'){
-        currentFontSize=clampNumber(parseInt(val,10)||12,8,72);
+        currentFontSize=clampNumber(parseInt(val,10)||12,8,maxTextSize);
         sizeSlider.value=currentFontSize;sizeNumber.value=currentFontSize;
         if(context&&context.objects.length>0){
             const textObjects=context.objects.filter(isTextObject);
@@ -1121,7 +2417,7 @@ function handleSizeChange(val){
             updateSelectedObjectProperties();
         }
     }else{
-        currentStrokeWidth=clampNumber(parseInt(val,10)||3,1,12);
+        currentStrokeWidth=clampNumber(parseInt(val,10)||3,1,maxStrokeSize);
         sizeSlider.value=currentStrokeWidth;sizeNumber.value=currentStrokeWidth;
         if(context&&context.objects.length>0){
             const strokeObjects=context.objects.filter(o=>!isTextObject(o));
@@ -1371,6 +2667,7 @@ function handleShapeEnd(){
                     selectable:true,
                     evented:true
                 });
+                configureTextObjectRendering(txt);
                 shapeCanvas.add(txt);
                 shapeCanvas.setActiveObject(txt);
                 txt.enterEditing();
@@ -1422,6 +2719,7 @@ function handleTextPlacement(c,o){
         left:p.x,top:p.y,fontFamily:currentFontFamily,fontSize:currentFontSize,
         fill:currentColor,selectable:true,evented:true
     });
+    configureTextObjectRendering(txt);
     c._suppressHistory=true;
     c.add(txt);
     c._suppressHistory=false;
@@ -1683,7 +2981,9 @@ async function renderPage(n,containerOverride=null){
 
         fc.on('object:added',e=>{
             const obj=e&&e.target;
-            if(!obj||!isArrowGroup(obj))return;
+            if(!obj)return;
+            if(isTextObject(obj))configureTextObjectRendering(obj);
+            if(!isArrowGroup(obj))return;
             obj.set({lockScalingX:true,lockScalingY:true});
             const line=(obj._objects||[]).find(p=>p.type==='line');
             const strokeColor=(line&&line.stroke)||currentColor;
@@ -1702,6 +3002,13 @@ async function renderPage(n,containerOverride=null){
         });
 
         fc.on('text:editing:entered',()=>{
+            if(suppressTextEditingLifecycle){
+                activeContextPageNum=fc._pageNum;
+                hasPendingTextEdits=true;
+                hasUnsavedChanges=true;
+                syncSizeControl();
+                return;
+            }
             activeContextPageNum=fc._pageNum;
             clearActiveSelectionsExcept(fc._pageNum);
             hasPendingTextEdits=true;
@@ -1710,6 +3017,12 @@ async function renderPage(n,containerOverride=null){
         });
 
         fc.on('text:editing:exited',()=>{
+            if(suppressTextEditingLifecycle){
+                const activeObj=fc.getActiveObject();
+                if(activeObj&&isTextObject(activeObj))configureTextObjectRendering(activeObj);
+                syncSizeControl();
+                return;
+            }
             textEditJustExited=true;
             setTimeout(()=>{textEditJustExited=false;},200);
             const empties=fc.getObjects().filter(o=>o.type==='i-text'&&!o.text.trim());
@@ -1741,7 +3054,6 @@ async function renderPage(n,containerOverride=null){
         });
 
         fc.on('mouse:down',o=>{
-            fc.lastModifiedTime=Date.now();
             activeContextPageNum=fc._pageNum;
             if(o.e.button===2){
                 isPanning=true;panStartX=o.e.clientX-panOffsetX;panStartY=o.e.clientY-panOffsetY;fc.defaultCursor='grabbing';
@@ -1786,7 +3098,6 @@ async function renderPage(n,containerOverride=null){
         fc.defaultCursor=getCursorForTool(activeTool);
         fc.calcOffset();
         renderedPages.add(n);
-        pageSizeMap.set(n,{w:dw,h:dh});
         cont.style.minHeight=`${dh}px`;
         cont.dataset.rendered='true';
         cont.dataset.pdfZoom=getZoomKey(zoomFactor);
@@ -1844,9 +3155,7 @@ async function renderAllPages(){
 // ─── PDF LOAD / SAVE ────────────────────────────────
 async function loadPDF(f){
     const ini=document.getElementById('initialMessage');
-    const ldg=document.getElementById('loadingMessage');
     if(ini)ini.style.display='none';
-    if(ldg)ldg.style.display='block';
     if(loadingOverlay)loadingOverlay.classList.remove('hidden');
     btnSavePdf.disabled=true;
     try{
@@ -1876,7 +3185,6 @@ async function loadPDF(f){
         const errDiv=document.createElement('div');errDiv.className='text-red-600 p-8';errDiv.textContent='Error: '+e.message;pdfViewer.innerHTML='';pdfViewer.appendChild(errDiv);
         btnSavePdf.disabled=true;
     }finally{
-        if(ldg)ldg.style.display='none';
         if(loadingOverlay)loadingOverlay.classList.add('hidden');
         fileInput.value='';
     }
@@ -1900,13 +3208,35 @@ function canvasToPngBytes(canvas){
     return bytes;
 }
 
+function hasTextStyleOverrides(obj){
+    const styles=obj&&obj.styles;
+    if(!styles||typeof styles!=='object')return false;
+    return Object.values(styles).some(lineStyles=>{
+        if(!lineStyles||typeof lineStyles!=='object')return false;
+        return Object.values(lineStyles).some(charStyle=>charStyle&&typeof charStyle==='object'&&Object.keys(charStyle).length>0);
+    });
+}
+
+function shouldRasterizeTextForPdf(obj){
+    if(!isTextObject(obj))return false;
+    const scaleX=Math.abs(Number(obj.scaleX)||1);
+    const scaleY=Math.abs(Number(obj.scaleY)||1);
+    if(Math.abs(scaleX-1)>0.001||Math.abs(scaleY-1)>0.001)return true;
+    if(Math.abs(Number(obj.skewX)||0)>0.001||Math.abs(Number(obj.skewY)||0)>0.001)return true;
+    if(hasTextStyleOverrides(obj))return true;
+    if(obj.stroke&&obj.stroke!=='transparent'&&(Number(obj.strokeWidth)||0)>0)return true;
+    if((Number(obj.charSpacing)||0)!==0)return true;
+    if(obj.textBackgroundColor||obj.underline||obj.linethrough||obj.overline)return true;
+    return false;
+}
+
 function getExportSourceCanvas(fc,multiplier=1,includeText=true){
     // Prefer fabric's export path so vectors/text are rerendered at higher resolution.
     // NOTE: caller must reset viewport transform to identity before calling this
     const hiddenText=[];
     if(fc&&!includeText){
         fc.getObjects().forEach(o=>{
-            if((o.type==='i-text'||o.type==='textbox')&&o.visible!==false){
+            if(isTextObject(o)&&o.visible!==false&&!shouldRasterizeTextForPdf(o)){
                 hiddenText.push(o);
                 o.visible=false;
             }
@@ -2009,7 +3339,7 @@ function drawTextObjectsAsVector(fc,page,rot,box,pdfHelpers){
             (obj._objects||[]).forEach(drawOne);
             return;
         }
-        if(obj.type!=='i-text'&&obj.type!=='textbox')return;
+        if(!isTextObject(obj)||shouldRasterizeTextForPdf(obj))return;
         const rawText=(obj.text||'');
         if(!rawText.trim())return;
 
@@ -2216,89 +3546,254 @@ window.addEventListener('scroll',()=>{
 },{passive:true});
 
 // ─── KEYBOARD SHORTCUTS ─────────────────────────────
-const TOOL_CODE_MAP={
-    'Digit1':'select','Numpad1':'select',
-    'Digit2':'draw','Numpad2':'draw',
-    'Digit3':'text','Numpad3':'text',
-    'Digit4':'line','Numpad4':'line',
-    'Digit5':'arrow','Numpad5':'arrow',
-    'Digit6':'rect','Numpad6':'rect',
-    'Digit7':'circle','Numpad7':'circle',
-    'Digit8':'highlight','Numpad8':'highlight',
-    'Digit9':'cloud','Numpad9':'cloud',
-    'KeyS':'select',
-    'KeyD':'draw',
-    'KeyT':'text',
-    'KeyL':'line',
-    'KeyA':'arrow',
-    'KeyR':'rect',
-    'KeyC':'circle',
-    'KeyH':'highlight',
-    'KeyV':'cloud',
-};
+function isShortcutSettingsOpen(){
+    return !!shortcutSettingsModal&&!shortcutSettingsModal.classList.contains('hidden');
+}
+
+function setShortcutSettingsStatus(message='',type='info'){
+    if(!shortcutSettingsStatus)return;
+    shortcutSettingsStatus.textContent=message;
+    shortcutSettingsStatus.className=`shortcut-status ${type}`;
+    shortcutSettingsStatus.classList.toggle('hidden',!message);
+}
+
+function setDraftShortcutBinding(scope,id,index,binding){
+    if(!shortcutDraftConfig)return;
+    const store=scope==='tools'?shortcutDraftConfig.tools:shortcutDraftConfig.actions;
+    if(!store[id])store[id]=new Array(getShortcutFieldDefinition(scope,id).defaults.length).fill('');
+    store[id][index]=binding;
+}
+
+function renderShortcutRows(scope,container){
+    if(!container||!shortcutDraftConfig)return;
+    container.innerHTML=getShortcutFieldDefinitions(scope).map(def=>{
+        const bindings=getShortcutBindings(scope,def.id,shortcutDraftConfig);
+        const buttons=def.defaults.map((_,index)=>{
+            const binding=bindings[index]||'';
+            const classes=['shortcut-slot-btn'];
+            if(!binding)classes.push('shortcut-empty');
+            if(activeShortcutCapture&&activeShortcutCapture.scope===scope&&activeShortcutCapture.id===def.id&&activeShortcutCapture.index===index){
+                classes.push('capture-active');
+            }
+            const label=activeShortcutCapture&&activeShortcutCapture.scope===scope&&activeShortcutCapture.id===def.id&&activeShortcutCapture.index===index
+                ? 'Press keys...'
+                : (binding?formatShortcutBinding(binding):'Unassigned');
+            return `<button type="button" class="${classes.join(' ')}" data-shortcut-scope="${scope}" data-shortcut-id="${def.id}" data-shortcut-index="${index}">${escapeHtml(label)}</button>`;
+        }).join('');
+        return `<div class="shortcut-row">
+            <div class="shortcut-row-main">
+                <div class="shortcut-row-title">${escapeHtml(def.label)}</div>
+                <div class="shortcut-row-help">${escapeHtml(def.description)}</div>
+            </div>
+            <div class="shortcut-slot-group">${buttons}</div>
+        </div>`;
+    }).join('');
+}
+
+function renderShortcutSettings(){
+    renderShortcutRows('tools',shortcutToolRows);
+    renderShortcutRows('actions',shortcutActionRows);
+}
+
+function renderEditorSettingsDraft(){
+    if(!editorSettingsDraft)return;
+    if(settingsMaxStrokeSize)settingsMaxStrokeSize.value=String(editorSettingsDraft.maxStrokeSize);
+    if(settingsMaxTextSize)settingsMaxTextSize.value=String(editorSettingsDraft.maxTextSize);
+}
+
+function openShortcutSettings(){
+    shortcutDraftConfig=getCurrentShortcutConfig();
+    editorSettingsDraft=getCurrentEditorSettings();
+    activeShortcutCapture=null;
+    renderShortcutSettings();
+    renderEditorSettingsDraft();
+    setShortcutSettingsStatus('Click a binding to remap it. Import merges known settings, ignores unknown ones, and saves immediately.','info');
+    if(shortcutSettingsModal)shortcutSettingsModal.classList.remove('hidden');
+    document.body.style.overflow='hidden';
+}
+
+function closeShortcutSettings(){
+    activeShortcutCapture=null;
+    shortcutDraftConfig=null;
+    editorSettingsDraft=null;
+    if(shortcutSettingsModal)shortcutSettingsModal.classList.add('hidden');
+    setShortcutSettingsStatus('');
+    document.body.style.overflow='';
+}
+
+function beginShortcutCapture(scope,id,index){
+    activeShortcutCapture={scope,id,index};
+    renderShortcutSettings();
+    setShortcutSettingsStatus('Press the new shortcut now. Escape cancels capture.','info');
+}
+
+function handleShortcutSettingsClick(target){
+    const trigger=target.closest('[data-shortcut-scope]');
+    if(!trigger)return false;
+    beginShortcutCapture(trigger.dataset.shortcutScope,trigger.dataset.shortcutId,parseInt(trigger.dataset.shortcutIndex,10));
+    return true;
+}
+
+function saveShortcutSettings(){
+    if(!shortcutDraftConfig||!editorSettingsDraft)return;
+    const validation=validateShortcutConfig(shortcutDraftConfig);
+    if(!validation.valid){
+        setShortcutSettingsStatus('Shortcut mappings are invalid. Reset to default or fix the conflicting binding.','error');
+        return;
+    }
+    const editorValidation=validateEditorSettings(editorSettingsDraft);
+    if(!editorValidation.valid){
+        setShortcutSettingsStatus('Editor settings are invalid. Check the max weight and max text size values.','error');
+        return;
+    }
+    applyEditorSettings(editorValidation.normalized,{persist:true});
+    applyShortcutConfig(shortcutDraftConfig,{persist:true});
+    closeShortcutSettings();
+    showMsg('Settings saved');
+}
+
+function resetShortcutDraftToDefault(){
+    shortcutDraftConfig=createDefaultShortcutConfig();
+    editorSettingsDraft=createDefaultEditorSettings();
+    activeShortcutCapture=null;
+    renderShortcutSettings();
+    renderEditorSettingsDraft();
+    setShortcutSettingsStatus('Default settings loaded. Save to apply them.','info');
+}
+
+function handleShortcutSettingsKeydown(e){
+    if(!isShortcutSettingsOpen())return false;
+    if(activeShortcutCapture){
+        e.preventDefault();
+        e.stopPropagation();
+        if(e.key==='Escape'){
+            activeShortcutCapture=null;
+            renderShortcutSettings();
+            setShortcutSettingsStatus('Shortcut capture cancelled.','info');
+            return true;
+        }
+        if(e.key==='Backspace'||e.key==='Delete'){
+            setDraftShortcutBinding(activeShortcutCapture.scope,activeShortcutCapture.id,activeShortcutCapture.index,'');
+            activeShortcutCapture=null;
+            renderShortcutSettings();
+            setShortcutSettingsStatus('Shortcut cleared. Save settings to keep the change.','info');
+            return true;
+        }
+        const binding=serializeShortcutFromEvent(e);
+        if(!binding){
+            setShortcutSettingsStatus('Press a non-modifier key or key combination.','error');
+            return true;
+        }
+        const conflict=findShortcutConflict(shortcutDraftConfig,binding,activeShortcutCapture);
+        if(conflict){
+            setShortcutSettingsStatus(`${formatShortcutBinding(binding)} is already assigned to ${getShortcutFieldLabel(conflict.scope,conflict.id)}.`,'error');
+            return true;
+        }
+        setDraftShortcutBinding(activeShortcutCapture.scope,activeShortcutCapture.id,activeShortcutCapture.index,binding);
+        activeShortcutCapture=null;
+        renderShortcutSettings();
+        setShortcutSettingsStatus(`Assigned ${formatShortcutBinding(binding)}. Save settings to apply it.`,'success');
+        return true;
+    }
+    if(e.key==='Escape'){
+        e.preventDefault();
+        closeShortcutSettings();
+        return true;
+    }
+    if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){
+        e.preventDefault();
+        saveShortcutSettings();
+        return true;
+    }
+    if(e.key!=='Tab')e.preventDefault();
+    return false;
+}
+
+function getShortcutActionForEvent(e){
+    const binding=serializeShortcutFromEvent(e);
+    return binding?shortcutLookup.actions.get(binding)||'':'';
+}
+
+function getShortcutToolForEvent(e){
+    const binding=serializeShortcutFromEvent(e);
+    return binding?shortcutLookup.tools.get(binding)||'':'';
+}
+
+function executeShortcutAction(actionId,{isTyping=false,isEditingCanvas=false,event=null}={}){
+    switch(actionId){
+        case 'copy': copySelectionToClipboard(); return true;
+        case 'cut': cutSelectionToClipboard(); return true;
+        case 'paste':
+            if(objectClipboard&&objectClipboard.objects&&objectClipboard.objects.length)void pasteClipboardObjects();
+            else showMsg('Clipboard empty');
+            return true;
+        case 'selectAll': selectAllOnActivePage(); return true;
+        case 'duplicate': duplicateActiveSelection(); return true;
+        case 'save':
+            if(!btnSavePdf.disabled)saveAllPagesAsPDF();
+            return true;
+        case 'undo': undo(); return true;
+        case 'redo': redo(); return true;
+        case 'deleteSelection': removeSelectionFromCanvas(getActiveSelectionContext()); return true;
+        case 'deselect':
+            if(isTyping&&event&&event.target&&typeof event.target.blur==='function'){event.target.blur();return true;}
+            if(isEditingCanvas){
+                fabricCanvases.forEach(c=>{
+                    const ao=c.getActiveObject();
+                    if(ao&&ao.type==='i-text'&&ao.isEditing)ao.exitEditing();
+                });
+            }
+            fabricCanvases.forEach(c=>{c.discardActiveObject();c.renderAll();});
+            setActiveTool('select');
+            return true;
+        case 'zoomIn': zoomIn(); return true;
+        case 'zoomOut': zoomOut(); return true;
+        case 'zoomFit': zoomFit(); return true;
+        case 'nudgeLeft': nudgeActiveSelection(-1,0); return true;
+        case 'nudgeRight': nudgeActiveSelection(1,0); return true;
+        case 'nudgeUp': nudgeActiveSelection(0,-1); return true;
+        case 'nudgeDown': nudgeActiveSelection(0,1); return true;
+        case 'nudgeLeftFast': nudgeActiveSelection(-10,0); return true;
+        case 'nudgeRightFast': nudgeActiveSelection(10,0); return true;
+        case 'nudgeUpFast': nudgeActiveSelection(0,-10); return true;
+        case 'nudgeDownFast': nudgeActiveSelection(0,10); return true;
+        default: return false;
+    }
+}
 
 document.addEventListener('keydown',e=>{
+    if(isShortcutSettingsOpen()){
+        handleShortcutSettingsKeydown(e);
+        return;
+    }
+
     const isTyping=e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.isContentEditable;
     let isEditingCanvas=false;
     fabricCanvases.forEach(c=>{
         const ao=c.getActiveObject();
         if(ao&&ao.type==='i-text'&&ao.isEditing)isEditingCanvas=true;
     });
+    const matchedAction=getShortcutActionForEvent(e);
+    const matchedTool=getShortcutToolForEvent(e);
 
-    // Delete/Backspace
-    if((e.key==='Delete'||e.key==='Backspace')&&!isTyping&&!isEditingCanvas){
-        for(const [pn,fc] of fabricCanvases){
-            const ao=fc.getActiveObject();
-            if(ao){
-                fc._suppressHistory=true;
-                if(ao.type==='activeSelection'){ao.forEachObject(obj=>fc.remove(obj));fc.discardActiveObject();}
-                else fc.remove(ao);
-                fc._suppressHistory=false;
-                saveCanvasState(fc);fc.renderAll();e.preventDefault();
-                break;
-            }
-        }
-        return;
-    }
-
-    // Ctrl+S save (works even when typing)
-    if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'&&!e.shiftKey){
+    if(matchedAction==='save'||matchedAction==='deselect'){
         e.preventDefault();
-        if(!btnSavePdf.disabled)saveAllPagesAsPDF();
-        return;
-    }
-
-    // Escape: deselect objects or switch to select tool
-    if(e.key==='Escape'){
-        if(isTyping){e.target.blur();return;}
-        if(isEditingCanvas){
-            fabricCanvases.forEach(c=>{
-                const ao=c.getActiveObject();
-                if(ao&&ao.type==='i-text'&&ao.isEditing)ao.exitEditing();
-            });
-        }
-        fabricCanvases.forEach(c=>{c.discardActiveObject();c.renderAll();});
-        setActiveTool('select');
+        executeShortcutAction(matchedAction,{isTyping,isEditingCanvas,event:e});
         return;
     }
 
     if(isTyping||isEditingCanvas)return;
 
-    // Tool shortcuts (regular + numpad)
-    if(!e.ctrlKey&&!e.metaKey&&TOOL_CODE_MAP[e.code]){
+    if(matchedAction){
         e.preventDefault();
-        setActiveTool(TOOL_CODE_MAP[e.code]);
+        executeShortcutAction(matchedAction,{isTyping,isEditingCanvas,event:e});
         return;
     }
 
-    const key=e.key.toLowerCase();
-    // Zoom shortcuts: Ctrl+= / Ctrl+- / Ctrl+0
-    if((e.ctrlKey||e.metaKey)&&(key==='='||key==='+')){e.preventDefault();zoomIn();return;}
-    if((e.ctrlKey||e.metaKey)&&key==='-'){e.preventDefault();zoomOut();return;}
-    if((e.ctrlKey||e.metaKey)&&key==='0'){e.preventDefault();zoomFit();return;}
-
-    if((e.ctrlKey||e.metaKey)&&key==='z'&&!e.shiftKey){e.preventDefault();undo();}
-    else if((e.ctrlKey||e.metaKey)&&(key==='y'||(key==='z'&&e.shiftKey))){e.preventDefault();redo();}
+    if(matchedTool){
+        e.preventDefault();
+        setActiveTool(matchedTool);
+    }
 });
 
 // ─── DRAG & DROP ────────────────────────────────────
@@ -2343,6 +3838,46 @@ document.querySelectorAll('.tool-btn').forEach(b=>b.addEventListener('click',()=
 btnSavePdf.addEventListener('click',saveAllPagesAsPDF);
 btnUndo.addEventListener('click',undo);
 btnRedo.addEventListener('click',redo);
+if(btnShortcutSettings)btnShortcutSettings.addEventListener('click',openShortcutSettings);
+if(btnCloseShortcutSettings)btnCloseShortcutSettings.addEventListener('click',closeShortcutSettings);
+if(btnCancelShortcutSettings)btnCancelShortcutSettings.addEventListener('click',closeShortcutSettings);
+if(btnSaveShortcutSettings)btnSaveShortcutSettings.addEventListener('click',saveShortcutSettings);
+if(btnImportSettings)btnImportSettings.addEventListener('click',()=>{if(settingsImportInput)settingsImportInput.click();});
+if(btnExportSettingsJson)btnExportSettingsJson.addEventListener('click',exportSettingsAsJson);
+if(btnExportSettingsCsv)btnExportSettingsCsv.addEventListener('click',exportSettingsAsCsv);
+if(btnResetShortcutDefaults)btnResetShortcutDefaults.addEventListener('click',resetShortcutDraftToDefault);
+if(settingsImportInput){
+    settingsImportInput.addEventListener('change',async()=>{
+        const file=settingsImportInput.files&&settingsImportInput.files[0];
+        settingsImportInput.value='';
+        if(!file)return;
+        try{
+            await importSettingsFromFile(file);
+        }catch(e){
+            const message=e&&e.message?e.message:'Settings import failed.';
+            setShortcutSettingsStatus(message,'error');
+            showMsg(message);
+        }
+    });
+}
+if(settingsMaxStrokeSize){
+    settingsMaxStrokeSize.addEventListener('input',()=>{
+        if(!editorSettingsDraft)return;
+        editorSettingsDraft.maxStrokeSize=parseInt(settingsMaxStrokeSize.value,10)||0;
+    });
+}
+if(settingsMaxTextSize){
+    settingsMaxTextSize.addEventListener('input',()=>{
+        if(!editorSettingsDraft)return;
+        editorSettingsDraft.maxTextSize=parseInt(settingsMaxTextSize.value,10)||0;
+    });
+}
+if(shortcutSettingsModal){
+    shortcutSettingsModal.addEventListener('click',e=>{
+        if(!e.target.closest('.shortcut-settings-panel'))closeShortcutSettings();
+        else handleShortcutSettingsClick(e.target);
+    });
+}
 if(btnPrevPage)btnPrevPage.addEventListener('click',()=>goToPage(currentVisiblePage-1));
 if(btnNextPage)btnNextPage.addEventListener('click',()=>goToPage(currentVisiblePage+1));
 if(pageJumpInput){
@@ -2384,7 +3919,7 @@ if(fillOpacityNumber)fillOpacityNumber.addEventListener('input',()=>handleFillOp
 
 // Color swatch clicks
 document.querySelectorAll('.color-swatch').forEach(s=>s.addEventListener('click',()=>{setColor(s.dataset.color);addRecentColor(s.dataset.color);closeColorPopover();}));
-customColorInput.addEventListener('input',()=>setColor(customColorInput.value));
+
 
 // ─── RECENT COLORS ──────────────────────────────────
 function getRecentColors(){
@@ -2424,7 +3959,7 @@ function renderRecentColors(){
     const popover=document.getElementById('colorPopover');
     const popoverWheel=document.getElementById('popoverWheel');
     const hexInput=document.getElementById('hexInput');
-    const previewDot=document.getElementById('colorPreviewDot');
+
     const swatchContainer=document.getElementById('popoverSwatches');
     const eyedropperBtn=document.getElementById('eyedropperBtn');
     if(!rainbowBtn||!popover)return;
@@ -2546,72 +4081,77 @@ function getPendingZoomBase(){
 async function applyZoom(newFactor){
     newFactor=clampZoom(newFactor);
     if(Math.abs(newFactor-zoomFactor)<0.001)return;
-    zoomFactor=newFactor;
-    updateZoomDisplay();
-    if(!pdfDoc)return;
+    const editingStates=captureEditingTextStates();
+    try{
+        zoomFactor=newFactor;
+        updateZoomDisplay();
+        if(!pdfDoc)return;
 
-    const scrollEl=document.documentElement;
-    let scrollRatio=0;
-    if(scrollEl){
-        const maxScroll=Math.max(1,scrollEl.scrollHeight-scrollEl.clientHeight);
-        scrollRatio=scrollEl.scrollTop/maxScroll;
-    }
+        const scrollEl=document.documentElement;
+        let scrollRatio=0;
+        if(scrollEl){
+            const maxScroll=Math.max(1,scrollEl.scrollHeight-scrollEl.clientHeight);
+            scrollRatio=scrollEl.scrollTop/maxScroll;
+        }
 
-    const pg1=await pdfDoc.getPage(1);
-    const vp1=pg1.getViewport({scale:1});
-    const fitScale=getTargetPageWidth(vp1.width);
-    baseScale=fitScale*zoomFactor;
-    scale=baseScale;
-    const fallbackViewport=pageViewportCache.get(1)||{width:vp1.width,height:vp1.height};
+        const pg1=await pdfDoc.getPage(1);
+        const vp1=pg1.getViewport({scale:1});
+        const fitScale=getTargetPageWidth(vp1.width);
+        baseScale=fitScale*zoomFactor;
+        scale=baseScale;
+        const fallbackViewport=pageViewportCache.get(1)||{width:vp1.width,height:vp1.height};
 
-    for(const [n,fc] of fabricCanvases){
-        const vp=pageViewportCache.get(n)||fallbackViewport;
-        const dw=vp.width*scale,dh=vp.height*scale;
+        for(const [n,fc] of fabricCanvases){
+            const vp=pageViewportCache.get(n)||fallbackViewport;
+            const dw=vp.width*scale,dh=vp.height*scale;
 
-        const cont=document.querySelector(`[data-page-num="${n}"]`);
-        if(cont){cont.style.width=`${dw}px`;cont.style.height=`${dh}px`;cont.style.minHeight=`${dh}px`;}
+            const cont=document.querySelector(`[data-page-num="${n}"]`);
+            if(cont){cont.style.width=`${dw}px`;cont.style.height=`${dh}px`;cont.style.minHeight=`${dh}px`;}
 
-        const renderZoom=fc._renderZoom||1;
-        const vptRatio=zoomFactor/renderZoom;
-        fc.setWidth(dw);fc.setHeight(dh);
-        fc.setViewportTransform([vptRatio,0,0,vptRatio,0,0]);
-        fc.calcOffset();
-        fc.requestRenderAll();
-        pageSizeMap.set(n,{w:dw,h:dh});
+            const renderZoom=fc._renderZoom||1;
+            const vptRatio=zoomFactor/renderZoom;
+            fc.setWidth(dw);fc.setHeight(dh);
+            fc.setViewportTransform([vptRatio,0,0,vptRatio,0,0]);
+            refreshCanvasTextRendering(fc);
+            fc.calcOffset();
+            fc.requestRenderAll();
 
-        if(cont&&isContainerNearViewport(cont)){
-            try{
-                await ensurePagePdfLayerAtCurrentZoom(n,cont,true);
-            }catch(err){
-                if(!isRenderCancelledError(err))console.error(`PDF rerender error page ${n}:`,err);
-            }
-        }else if(cont){
-            const pdfC=cont.querySelector('.pdf-viewer-canvas');
-            if(pdfC){
-                // Fast path for distant pages: resize display now, rerender PDF when page
-                // comes back near viewport (observer/goToPage).
-                pdfC.style.width=`${dw}px`;
-                pdfC.style.height=`${dh}px`;
+            if(cont&&isContainerNearViewport(cont)){
+                try{
+                    await ensurePagePdfLayerAtCurrentZoom(n,cont,true);
+                }catch(err){
+                    if(!isRenderCancelledError(err))console.error(`PDF rerender error page ${n}:`,err);
+                }
+            }else if(cont){
+                const pdfC=cont.querySelector('.pdf-viewer-canvas');
+                if(pdfC){
+                    // Fast path for distant pages: resize display now, rerender PDF when page
+                    // comes back near viewport (observer/goToPage).
+                    pdfC.style.width=`${dw}px`;
+                    pdfC.style.height=`${dh}px`;
+                }
             }
         }
-    }
 
-    for(let i=1;i<=numPages;i++){
-        if(!fabricCanvases.has(i)){
-            const cont=document.querySelector(`[data-page-num="${i}"]`);
-            if(cont){
-                const vp=pageViewportCache.get(i)||fallbackViewport;
-                const dw=vp.width*scale,dh=vp.height*scale;
-                cont.style.width=`${dw}px`;cont.style.height=`${dh}px`;cont.style.minHeight=`${dh}px`;
+        for(let i=1;i<=numPages;i++){
+            if(!fabricCanvases.has(i)){
+                const cont=document.querySelector(`[data-page-num="${i}"]`);
+                if(cont){
+                    const vp=pageViewportCache.get(i)||fallbackViewport;
+                    const dw=vp.width*scale,dh=vp.height*scale;
+                    cont.style.width=`${dw}px`;cont.style.height=`${dh}px`;cont.style.minHeight=`${dh}px`;
+                }
             }
         }
-    }
 
-    if(scrollEl){
-        const maxScroll=Math.max(1,scrollEl.scrollHeight-scrollEl.clientHeight);
-        scrollEl.scrollTop=scrollRatio*maxScroll;
+        if(scrollEl){
+            const maxScroll=Math.max(1,scrollEl.scrollHeight-scrollEl.clientHeight);
+            scrollEl.scrollTop=scrollRatio*maxScroll;
+        }
+        updateVisiblePage();
+    }finally{
+        restoreEditingTextStates(editingStates,{resumeEditing:false});
     }
-    updateVisiblePage();
 }
 
 let _zoomRetries=0;
@@ -2655,11 +4195,15 @@ document.addEventListener('wheel',(e)=>{
 // ─── INIT ───────────────────────────────────────────
 loadArrowModePreference();
 loadHighlightModePreference();
+loadShortcutPreference();
+loadEditorSettings();
 setActiveTool('select');
 currentFontFamily=fontFamilySelect.value;
 syncSizeControl();
 updatePageNavControls();
 updateZoomDisplay();
+const pendingSettingsMessages=[pendingShortcutResetNotice,pendingEditorSettingsResetNotice].filter(Boolean);
+if(pendingSettingsMessages.length)showMsg(pendingSettingsMessages.join(' '));
 
 if(!window.PDFLib){
     console.error('PDFLib failed to load');
@@ -2683,7 +4227,11 @@ if(!window.PDFLib){
 
 // ─── SERVICE WORKER REGISTRATION ────────────────────
 if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('./sw.js').then(reg=>{
+    navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).then(reg=>{
+        reg.update().catch(()=>{});
+        if(reg.waiting&&navigator.serviceWorker.controller){
+            showMsg('App updated — reload for latest version');
+        }
         reg.addEventListener('updatefound',()=>{
             const nw=reg.installing;
             if(nw) nw.addEventListener('statechange',()=>{
