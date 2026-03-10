@@ -797,7 +797,7 @@ const savedStateByPage=new Map();
 const historyStack=[];
 let historyPointer=-1;
 const CLIPBOARD_OBJECT_PROPS=['annotationType','selectable','evented'];
-const KEYBOARD_PASTE_OFFSET=8;
+const KEYBOARD_PASTE_OFFSET=15;
 const DEFAULT_MAX_STROKE_SIZE=50;
 const DEFAULT_MAX_TEXT_SIZE=300;
 let objectClipboard=null;
@@ -811,6 +811,7 @@ const PREF_KEY_HIGHLIGHT_MODE='draftannotator.highlight.mode';
 const PREF_KEY_RECENT_COLORS='draftannotator.recentColors';
 const PREF_KEY_SHORTCUTS='draftannotator.shortcuts';
 const PREF_KEY_EDITOR_SETTINGS='draftannotator.editorSettings';
+const PREF_KEY_TOOLBAR_STATE='draftannotator.toolbarState';
 let defaultPageSize={w:900,h:1200};
 let arrowMode='single';
 let highlightMode='pen';
@@ -869,6 +870,8 @@ const SHORTCUT_TOOL_FIELD_MAP=new Map(SHORTCUT_TOOL_FIELDS.map(def=>[def.id,def]
 const SHORTCUT_ACTION_FIELD_MAP=new Map(SHORTCUT_ACTION_FIELDS.map(def=>[def.id,def]));
 const EDITOR_SETTINGS_SCHEMA_VERSION=1;
 const SETTINGS_EXPORT_SCHEMA_VERSION=1;
+const TOOLBAR_STATE_SCHEMA_VERSION=1;
+const FONT_FAMILY_OPTIONS=['sans-serif','serif','monospace'];
 const EDITOR_SETTINGS_LIMITS={
     maxStrokeSize:{min:6,max:200,default:DEFAULT_MAX_STROKE_SIZE},
     maxTextSize:{min:72,max:1000,default:DEFAULT_MAX_TEXT_SIZE}
@@ -880,6 +883,7 @@ let editorSettingsDraft=null;
 let activeShortcutCapture=null;
 let pendingShortcutResetNotice='';
 let pendingEditorSettingsResetNotice='';
+let pendingToolbarStateResetNotice='';
 const shortcutLookup={tools:new Map(),actions:new Map()};
 
 function createDefaultShortcutConfig(){
@@ -897,6 +901,19 @@ function createDefaultEditorSettings(){
     };
 }
 
+function createDefaultToolbarState(){
+    return {
+        version:TOOLBAR_STATE_SCHEMA_VERSION,
+        activeTool:'select',
+        currentColor:'#ef4444',
+        currentFontSize:16,
+        currentStrokeWidth:3,
+        currentFontFamily:'sans-serif',
+        shapeFillEnabled:false,
+        shapeFillOpacity:25
+    };
+}
+
 function cloneShortcutConfig(config){
     return JSON.parse(JSON.stringify(config));
 }
@@ -905,8 +922,93 @@ function cloneEditorSettings(settings){
     return JSON.parse(JSON.stringify(settings));
 }
 
+function cloneToolbarState(state){
+    return JSON.parse(JSON.stringify(state));
+}
+
 function sanitizeShortcutBinding(binding){
     return typeof binding==='string'?binding.trim():'';
+}
+
+function normalizeToolbarColor(value){
+    if(typeof value!=='string')return '';
+    let color=value.trim().toLowerCase();
+    if(!color)return '';
+    if(/^#[0-9a-f]{3}$/.test(color)){
+        color=`#${color[1]}${color[1]}${color[2]}${color[2]}${color[3]}${color[3]}`;
+    }
+    return /^#[0-9a-f]{6}$/.test(color)?color:'';
+}
+
+function mergeToolbarState(sourceState,{baseState=createDefaultToolbarState()}={}){
+    const defaultState=createDefaultToolbarState();
+    const safeBase=baseState&&typeof baseState==='object'?cloneToolbarState(baseState):defaultState;
+    const source=sourceState&&typeof sourceState==='object'?sourceState:null;
+    const normalized={...defaultState,...safeBase,version:TOOLBAR_STATE_SCHEMA_VERSION};
+    let recognized=false;
+    let mergedAny=!!(source&&source.version!==TOOLBAR_STATE_SCHEMA_VERSION);
+    let ignoredCount=0;
+
+    if(source&&Object.prototype.hasOwnProperty.call(source,'activeTool')){
+        recognized=true;
+        if(Object.prototype.hasOwnProperty.call(TOOL_NAMES,source.activeTool))normalized.activeTool=source.activeTool;
+        else{ignoredCount++;mergedAny=true;}
+    }
+    if(source&&Object.prototype.hasOwnProperty.call(source,'currentColor')){
+        recognized=true;
+        const color=normalizeToolbarColor(source.currentColor);
+        if(color)normalized.currentColor=color;
+        else{ignoredCount++;mergedAny=true;}
+    }
+    if(source&&Object.prototype.hasOwnProperty.call(source,'currentFontSize')){
+        recognized=true;
+        const value=clampNumber(parseInt(source.currentFontSize,10)||0,8,maxTextSize);
+        if(Number.isFinite(value)&&value>=8)normalized.currentFontSize=value;
+        else{ignoredCount++;mergedAny=true;}
+    }else{
+        normalized.currentFontSize=clampNumber(parseInt(normalized.currentFontSize,10)||16,8,maxTextSize);
+    }
+    if(source&&Object.prototype.hasOwnProperty.call(source,'currentStrokeWidth')){
+        recognized=true;
+        const value=clampNumber(parseInt(source.currentStrokeWidth,10)||0,1,maxStrokeSize);
+        if(Number.isFinite(value)&&value>=1)normalized.currentStrokeWidth=value;
+        else{ignoredCount++;mergedAny=true;}
+    }else{
+        normalized.currentStrokeWidth=clampNumber(parseInt(normalized.currentStrokeWidth,10)||3,1,maxStrokeSize);
+    }
+    if(source&&Object.prototype.hasOwnProperty.call(source,'currentFontFamily')){
+        recognized=true;
+        if(FONT_FAMILY_OPTIONS.includes(source.currentFontFamily))normalized.currentFontFamily=source.currentFontFamily;
+        else{ignoredCount++;mergedAny=true;}
+    }
+    if(source&&Object.prototype.hasOwnProperty.call(source,'shapeFillEnabled')){
+        recognized=true;
+        normalized.shapeFillEnabled=!!source.shapeFillEnabled;
+        if(normalized.shapeFillEnabled!==source.shapeFillEnabled)mergedAny=true;
+    }
+    if(source&&Object.prototype.hasOwnProperty.call(source,'shapeFillOpacity')){
+        recognized=true;
+        const parsedValue=parseInt(source.shapeFillOpacity,10);
+        if(Number.isInteger(parsedValue)){
+            normalized.shapeFillOpacity=clampNumber(parsedValue,0,100);
+            if(normalized.shapeFillOpacity!==parsedValue)mergedAny=true;
+        }else{
+            ignoredCount++;
+            mergedAny=true;
+        }
+    }else{
+        normalized.shapeFillOpacity=clampNumber(parseInt(normalized.shapeFillOpacity,10)||25,0,100);
+    }
+
+    normalized.currentFontSize=clampNumber(parseInt(normalized.currentFontSize,10)||16,8,maxTextSize);
+    normalized.currentStrokeWidth=clampNumber(parseInt(normalized.currentStrokeWidth,10)||3,1,maxStrokeSize);
+    normalized.shapeFillOpacity=clampNumber(parseInt(normalized.shapeFillOpacity,10)||25,0,100);
+    if(!FONT_FAMILY_OPTIONS.includes(normalized.currentFontFamily))normalized.currentFontFamily='sans-serif';
+    if(!Object.prototype.hasOwnProperty.call(TOOL_NAMES,normalized.activeTool))normalized.activeTool='select';
+    const normalizedColor=normalizeToolbarColor(normalized.currentColor);
+    normalized.currentColor=normalizedColor||'#ef4444';
+
+    return {normalized,recognized,merged:mergedAny,ignoredCount};
 }
 
 function getShortcutBindingSourceArray(store,id){
@@ -1259,6 +1361,7 @@ function applyEditorSettings(settings,{persist=false}={}){
         fabricCanvases.forEach(c=>{if(c.freeDrawingBrush)c.freeDrawingBrush.width=getHighlightBrushWidth();});
     }
     syncSizeControl();
+    persistToolbarPreference();
     if(persist)persistEditorSettings();
 }
 
@@ -1300,6 +1403,58 @@ function loadEditorSettings(){
     applyEditorSettings(mergeResult.normalized,{persist:true});
     if(parsedSettings&&(!mergeResult.recognized||mergeResult.merged||mergeResult.ignoredCount>0)){
         pendingEditorSettingsResetNotice='Editor limits were merged with the latest defaults. Unknown or invalid values were ignored.';
+    }
+}
+
+function getCurrentToolbarState(){
+    return cloneToolbarState({
+        version:TOOLBAR_STATE_SCHEMA_VERSION,
+        activeTool,
+        currentColor,
+        currentFontSize:clampNumber(parseInt(currentFontSize,10)||16,8,maxTextSize),
+        currentStrokeWidth:clampNumber(parseInt(currentStrokeWidth,10)||3,1,maxStrokeSize),
+        currentFontFamily:FONT_FAMILY_OPTIONS.includes(currentFontFamily)?currentFontFamily:'sans-serif',
+        shapeFillEnabled:!!shapeFillEnabled,
+        shapeFillOpacity:clampNumber(parseInt(shapeFillOpacity,10)||25,0,100)
+    });
+}
+
+function persistToolbarPreference(){
+    try{localStorage.setItem(PREF_KEY_TOOLBAR_STATE,JSON.stringify(getCurrentToolbarState()));}catch(e){}
+}
+
+function applyToolbarPreference(state,{persist=false}={}){
+    const normalized=mergeToolbarState(state,{baseState:getCurrentToolbarState()}).normalized;
+    activeTool=normalized.activeTool;
+    currentColor=normalized.currentColor;
+    currentFontSize=normalized.currentFontSize;
+    currentStrokeWidth=normalized.currentStrokeWidth;
+    currentFontFamily=normalized.currentFontFamily;
+    shapeFillEnabled=normalized.shapeFillEnabled;
+    shapeFillOpacity=normalized.shapeFillOpacity;
+    if(fontFamilySelect)fontFamilySelect.value=currentFontFamily;
+    if(fillToggle)fillToggle.checked=shapeFillEnabled;
+    if(fillOpacitySlider){
+        fillOpacitySlider.value=shapeFillOpacity;
+        fillOpacitySlider.disabled=!shapeFillEnabled;
+    }
+    if(fillOpacityNumber){
+        fillOpacityNumber.value=shapeFillOpacity;
+        fillOpacityNumber.disabled=!shapeFillEnabled;
+    }
+    if(persist)persistToolbarPreference();
+}
+
+function loadToolbarPreference(){
+    let parsedState=null;
+    try{
+        const raw=localStorage.getItem(PREF_KEY_TOOLBAR_STATE);
+        if(raw)parsedState=JSON.parse(raw);
+    }catch(e){}
+    const mergeResult=mergeToolbarState(parsedState,{baseState:createDefaultToolbarState()});
+    applyToolbarPreference(mergeResult.normalized,{persist:true});
+    if(parsedState&&(!mergeResult.recognized||mergeResult.merged||mergeResult.ignoredCount>0)){
+        pendingToolbarStateResetNotice='Last-used toolbar state was merged with supported fields. Unknown or invalid values were ignored.';
     }
 }
 
@@ -2267,7 +2422,7 @@ function stopPanning(){
     fabricCanvases.forEach(c=>{c.defaultCursor=getCursorForTool(activeTool);});
 }
 
-function setActiveTool(t){
+function setActiveTool(t,{announce=true,persist=true}={}){
     // Exit any active text editing first - prevents stuck isEditingCanvas
     fabricCanvases.forEach(c=>{
         const ao=c.getActiveObject();
@@ -2303,12 +2458,14 @@ function setActiveTool(t){
     if(highlightModeGroup)highlightModeGroup.classList.toggle('hidden',t!=='highlight');
     if(highlightModeDivider)highlightModeDivider.style.display=t==='highlight'?'block':'none';
     syncSizeControl();
-    showMsg(TOOL_NAMES[t]||t);
+    if(persist)persistToolbarPreference();
+    if(announce)showMsg(TOOL_NAMES[t]||t);
 }
 
-function setColor(color){
+function setColor(color,{persist=true,applySelection=true}={}){
     currentColor=color;
     document.querySelectorAll('.color-swatch').forEach(s=>s.classList.toggle('active-color',s.dataset.color===color));
+    if(customColorInput)customColorInput.value=color;
 
     // Sync popover controls
     const pw=document.getElementById('popoverWheel');
@@ -2332,13 +2489,16 @@ function setColor(color){
         });
     }
 
-    const context=getActiveSelectionContext();
-    if(context&&context.objects.length>0){
-        context.objects.forEach(obj=>setObjectColor(obj,color));
-        context.canvas.requestRenderAll();
-        saveCanvasState(context.canvas);
+    if(applySelection){
+        const context=getActiveSelectionContext();
+        if(context&&context.objects.length>0){
+            context.objects.forEach(obj=>setObjectColor(obj,color));
+            context.canvas.requestRenderAll();
+            saveCanvasState(context.canvas);
+        }
     }
     syncSizeControl();
+    if(persist)persistToolbarPreference();
 }
 
 // ─── UNIFIED SIZE CONTROL ───────────────────────────
@@ -2434,6 +2594,7 @@ function handleSizeChange(val){
         }
     }
     syncSizeControl();
+    persistToolbarPreference();
 }
 
 // ─── SHAPE DRAWING SYSTEM ───────────────────────────
@@ -2453,6 +2614,7 @@ function applyCurrentFillStyleToSelection(){
 function handleFillToggleChange(checked){
     shapeFillEnabled=!!checked;
     applyCurrentFillStyleToSelection();
+    persistToolbarPreference();
 }
 
 function handleFillOpacityChange(val){
@@ -2461,6 +2623,7 @@ function handleFillOpacityChange(val){
     if(fillOpacityNumber)fillOpacityNumber.value=shapeFillOpacity;
     if(shapeFillEnabled)applyCurrentFillStyleToSelection();
     else syncSizeControl();
+    persistToolbarPreference();
 }
 
 let shapeStart=null,tempShape=null,isShapeDrawing=false,shapeCanvas=null,currentShapeKind=null;
@@ -3912,7 +4075,11 @@ if(highlightModeSelect){
 }
 sizeSlider.addEventListener('input',()=>handleSizeChange(sizeSlider.value));
 sizeNumber.addEventListener('input',()=>handleSizeChange(sizeNumber.value));
-fontFamilySelect.addEventListener('change',()=>{currentFontFamily=fontFamilySelect.value;updateSelectedObjectProperties();});
+fontFamilySelect.addEventListener('change',()=>{
+    currentFontFamily=fontFamilySelect.value;
+    updateSelectedObjectProperties();
+    persistToolbarPreference();
+});
 if(fillToggle)fillToggle.addEventListener('change',()=>handleFillToggleChange(fillToggle.checked));
 if(fillOpacitySlider)fillOpacitySlider.addEventListener('input',()=>handleFillOpacityChange(fillOpacitySlider.value));
 if(fillOpacityNumber)fillOpacityNumber.addEventListener('input',()=>handleFillOpacityChange(fillOpacityNumber.value));
@@ -4197,12 +4364,12 @@ loadArrowModePreference();
 loadHighlightModePreference();
 loadShortcutPreference();
 loadEditorSettings();
-setActiveTool('select');
-currentFontFamily=fontFamilySelect.value;
-syncSizeControl();
+loadToolbarPreference();
+setColor(currentColor,{persist:false,applySelection:false});
+setActiveTool(activeTool,{announce:false,persist:false});
 updatePageNavControls();
 updateZoomDisplay();
-const pendingSettingsMessages=[pendingShortcutResetNotice,pendingEditorSettingsResetNotice].filter(Boolean);
+const pendingSettingsMessages=[pendingShortcutResetNotice,pendingEditorSettingsResetNotice,pendingToolbarStateResetNotice].filter(Boolean);
 if(pendingSettingsMessages.length)showMsg(pendingSettingsMessages.join(' '));
 
 if(!window.PDFLib){
