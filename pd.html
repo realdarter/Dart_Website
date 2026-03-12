@@ -832,6 +832,7 @@ let defaultPageSize={w:900,h:1200};
 let arrowMode='single';
 let highlightMode='pen';
 let zoomFactor=1.0; // 1.0 = fit-to-width (100%)
+let pendingResizeFocus=null;
 let shapeFillEnabled=false;
 let shapeFillOpacity=25;
 let activeContextPageNum=1;
@@ -2096,14 +2097,9 @@ function clonePlainData(value){
 }
 
 function getClipboardTargetCanvas(){
-    const context=getActiveSelectionContext();
-    if(context&&context.canvas)return context.canvas;
-    const pageCandidates=[currentVisiblePage,activeContextPageNum,objectClipboard&&objectClipboard.sourcePageNum];
-    for(const pageNum of pageCandidates){
-        if(!Number.isFinite(pageNum))continue;
-        const canvas=fabricCanvases.get(pageNum);
-        if(canvas)return canvas;
-    }
+    // Always paste on the currently visible page (shown in the page indicator)
+    const vc=fabricCanvases.get(currentVisiblePage);
+    if(vc)return vc;
     return null;
 }
 
@@ -2130,7 +2126,6 @@ function copySelectionToClipboard({silent=false,context=null}={}){
     const selectionContext=context||getActiveSelectionContext();
     if(!selectionContext||!selectionContext.objects.length)return false;
     objectClipboard={
-        sourcePageNum:selectionContext.pageNum,
         objects:serializeObjectsForClipboard(selectionContext.objects)
     };
     clipboardPasteCount=0;
@@ -2196,9 +2191,7 @@ async function pasteClipboardObjects(payload=objectClipboard,{targetCanvas=null,
         if(announce)showMsg('Clipboard empty');
         return false;
     }
-    const preferSourceCanvas=!targetCanvas&&Number.isFinite(payload.sourcePageNum);
-    const sourceCanvas=preferSourceCanvas?fabricCanvases.get(payload.sourcePageNum):null;
-    const canvas=targetCanvas||sourceCanvas||getClipboardTargetCanvas();
+    const canvas=targetCanvas||getClipboardTargetCanvas();
     if(!canvas){
         if(announce)showMsg('Scroll to a rendered page before pasting');
         return false;
@@ -2213,35 +2206,13 @@ async function pasteClipboardObjects(payload=objectClipboard,{targetCanvas=null,
     const nextOffset=Number.isFinite(offsetMultiplier)?offsetMultiplier:(clipboardPasteCount+1);
     const delta=KEYBOARD_PASTE_OFFSET*nextOffset;
 
-    // Calculate bounding box center of original objects
-    const allLeft=objects.map(o=>Number(o.left)||0);
-    const allTop=objects.map(o=>Number(o.top)||0);
-    const allRight=objects.map((o,i)=>allLeft[i]+(o.getScaledWidth?o.getScaledWidth():o.width||0));
-    const allBottom=objects.map((o,i)=>allTop[i]+(o.getScaledHeight?o.getScaledHeight():o.height||0));
-    const origCenterX=(Math.min(...allLeft)+Math.max(...allRight))/2;
-    const origCenterY=(Math.min(...allTop)+Math.max(...allBottom))/2;
-
-    // Determine paste target: last mouse position on this canvas, or canvas center
-    let targetX,targetY;
-    const mouseOnTarget=lastCanvasMousePos&&lastCanvasMousePos.pageNum===canvas._pageNum;
-    if(mouseOnTarget){
-        targetX=lastCanvasMousePos.x;
-        targetY=lastCanvasMousePos.y;
-    }else{
-        const vpt=canvas.viewportTransform||[1,0,0,1,0,0];
-        targetX=(-vpt[4]+canvas.width/2)/vpt[0];
-        targetY=(-vpt[5]+canvas.height/2)/vpt[3];
-    }
-    const dx=targetX-origCenterX+delta;
-    const dy=targetY-origCenterY+delta;
-
-    const previousVisiblePage=currentVisiblePage;
+    // Paste at original position + small offset (same spot on any page)
     canvas._suppressHistory=true;
     canvas.discardActiveObject();
     objects.forEach(obj=>{
         obj.set({
-            left:(Number(obj.left)||0)+dx,
-            top:(Number(obj.top)||0)+dy
+            left:(Number(obj.left)||0)+delta,
+            top:(Number(obj.top)||0)+delta
         });
         prepareClipboardObject(obj);
         canvas.add(obj);
@@ -2252,224 +2223,17 @@ async function pasteClipboardObjects(payload=objectClipboard,{targetCanvas=null,
     currentVisiblePage=canvas._pageNum||currentVisiblePage;
     updatePageIndicator();
     if(payload===objectClipboard)clipboardPasteCount=nextOffset;
-    if(preferSourceCanvas&&previousVisiblePage!==currentVisiblePage){
-        const pageContainer=document.querySelector(`[data-page-num="${currentVisiblePage}"]`);
-        if(pageContainer)pageContainer.scrollIntoView({behavior:'smooth',block:'start'});
-    }
     if(announce){
         showMsg(objects.length>1?`Pasted ${objects.length} objects`:'Pasted');
     }
     return true;
 }
 
-function transferObjectToAdjacentPage(sourceCanvas,obj){
-    if(!obj||obj.type==='activeSelection')return false;
-    const objH=obj.getScaledHeight?obj.getScaledHeight():obj.height||0;
-    const target=_getMirrorTarget(sourceCanvas,obj.top,obj.top+objH);
-    if(!target)return false;
-    const {targetPageNum,targetCanvas,topOffset}=target;
-    const newTop=obj.top+topOffset;
-
-    const serialized=obj.toObject(CLIPBOARD_OBJECT_PROPS);
-    serialized.top=newTop;
-
-    sourceCanvas._suppressHistory=true;
-    sourceCanvas.remove(obj);
-    sourceCanvas.discardActiveObject();
-    sourceCanvas._suppressHistory=false;
-    sourceCanvas.renderAll();
-    saveCanvasState(sourceCanvas);
-
-    fabric.util.enlivenObjects([serialized],objects=>{
-        if(!objects||!objects.length)return;
-        const newObj=objects[0];
-        if(serialized.annotationType)newObj.annotationType=serialized.annotationType;
-        prepareClipboardObject(newObj);
-        targetCanvas._suppressHistory=true;
-        targetCanvas.add(newObj);
-        targetCanvas._suppressHistory=false;
-        targetCanvas.setActiveObject(newObj);
-        targetCanvas.renderAll();
-        saveCanvasState(targetCanvas);
-        activeContextPageNum=targetPageNum;
-        showMsg(`Moved to page ${targetPageNum}`);
-    });
-    return true;
-}
-
-function transferActiveSelectionToAdjacentPage(sourceCanvas,selection){
-    if(!selection||selection.type!=='activeSelection')return false;
-    const objects=selection.getObjects().slice();
-    if(!objects.length)return false;
-
-    // Use the selection GROUP's own top/height (canvas-absolute coords)
-    const selTop=selection.top;
-    const selH=(selection.height||0)*(selection.scaleY||1);
-    const selBottom=selTop+selH;
-
-    const target=_getMirrorTarget(sourceCanvas,selTop,selBottom);
-    if(!target)return false;
-    const {targetPageNum,targetCanvas,topOffset}=target;
-
-    // Capture each object's absolute position using the group's transform
-    // obj.top/left inside activeSelection are relative to group center,
-    // so we use calcTransformMatrix to get absolute canvas coords
-    const absCoords=objects.map(obj=>{
-        const m=obj.calcTransformMatrix();
-        const w=obj.getScaledWidth?obj.getScaledWidth():(obj.width||0);
-        const h=obj.getScaledHeight?obj.getScaledHeight():(obj.height||0);
-        return {absLeft:m[4]-w/2, absTop:m[5]-h/2};
-    });
-
-    // Now discard selection and serialize with captured absolute coords + topOffset
-    sourceCanvas.discardActiveObject();
-
-    const serializedObjects=objects.map((obj,i)=>{
-        const serialized=obj.toObject(CLIPBOARD_OBJECT_PROPS);
-        serialized.left=absCoords[i].absLeft;
-        serialized.top=absCoords[i].absTop+topOffset;
-        if(obj.annotationType)serialized.annotationType=obj.annotationType;
-        return serialized;
-    });
-
-    sourceCanvas._suppressHistory=true;
-    try{ objects.forEach(obj=>sourceCanvas.remove(obj)); }
-    finally{ sourceCanvas._suppressHistory=false; }
-    sourceCanvas.renderAll();
-    saveCanvasState(sourceCanvas);
-
-    fabric.util.enlivenObjects(serializedObjects,restored=>{
-        if(!restored||!restored.length)return;
-        targetCanvas._suppressHistory=true;
-        try{
-            restored.forEach((obj,i)=>{
-                if(serializedObjects[i]&&serializedObjects[i].annotationType)obj.annotationType=serializedObjects[i].annotationType;
-                prepareClipboardObject(obj);
-                targetCanvas.add(obj);
-            });
-        }finally{ targetCanvas._suppressHistory=false; }
-        targetCanvas.discardActiveObject();
-        targetCanvas.requestRenderAll();
-        saveCanvasState(targetCanvas);
-        activeContextPageNum=targetPageNum;
-        showMsg(`Moved selection to page ${targetPageNum}`);
-    });
-    return true;
-}
-
-// ─── CROSS-PAGE MIRROR (shows object on adjacent page) ──
-let _activeMirror=null; // {targetCanvas, mirrorObj, sourceObj, sourceCanvas}
-
-function _getMirrorTarget(sourceCanvas,objTop,objBottom){
-    // Walk through pages to find where the object center would land
-    const vpt=sourceCanvas.viewportTransform||[1,0,0,1,0,0];
-    const canvasH=sourceCanvas.height/(vpt[3]||1);
-    const center=(objTop+objBottom)/2;
-    const pageNum=sourceCanvas._pageNum;
-
-    if(center>=0&&center<=canvasH)return null; // within bounds
-
-    let cumOffset=0;
-    if(center<0){
-        // Walking upward through pages
-        let pg=pageNum;
-        let rem=center; // negative
-        while(rem<0&&pg>1){
-            pg--;
-            const tc=fabricCanvases.get(pg);
-            if(!tc)return null;
-            const tVpt=tc.viewportTransform||[1,0,0,1,0,0];
-            const tH=tc.height/(tVpt[3]||1);
-            cumOffset+=tH;
-            rem+=tH;
-        }
-        if(pg<1)return null;
-        const tc=fabricCanvases.get(pg);
-        if(!tc)return null;
-        return {targetPageNum:pg,targetCanvas:tc,topOffset:cumOffset};
-    }else{
-        // Walking downward through pages
-        let pg=pageNum;
-        let rem=center;
-        while(rem>0){
-            const tc=fabricCanvases.get(pg);
-            if(!tc)return null;
-            const tVpt=tc.viewportTransform||[1,0,0,1,0,0];
-            const tH=tc.height/(tVpt[3]||1);
-            if(rem<=tH){
-                if(pg===pageNum)return null; // still on source page
-                return {targetPageNum:pg,targetCanvas:tc,topOffset:-cumOffset};
-            }
-            cumOffset+=tH;
-            rem-=tH;
-            pg++;
-        }
-        const tc=fabricCanvases.get(pg);
-        if(!tc)return null;
-        return {targetPageNum:pg,targetCanvas:tc,topOffset:-cumOffset};
-    }
-}
-
-function updateEdgeMirror(sourceCanvas,obj){
-    if(!obj||obj._isMirror)return clearEdgeMirror();
-
-    // Treat everything (single or group) as one box using obj's own top/height
-    const objTop=obj.top;
-    const objH=(obj.height||0)*(obj.scaleY||1);
-    const objBottom=objTop+objH;
-    const objLeft=obj.left;
-
-    const target=_getMirrorTarget(sourceCanvas,objTop,objBottom);
-    if(!target)return clearEdgeMirror();
-    const {targetCanvas,topOffset}=target;
-    const mirrorTop=objTop+topOffset;
-
-    // Reuse existing mirror if same target and source, otherwise recreate
-    if(_activeMirror&&_activeMirror.targetCanvas===targetCanvas&&_activeMirror.sourceObj===obj){
-        _activeMirror.mirrorObj.set({left:objLeft,top:mirrorTop,scaleX:obj.scaleX,scaleY:obj.scaleY,angle:obj.angle});
-        _activeMirror.mirrorObj.setCoords();
-        targetCanvas.requestRenderAll();
-        return;
-    }
-
-    clearEdgeMirror();
-
-    obj.clone((cloned)=>{
-        if(!cloned)return;
-        cloned.set({
-            left:objLeft, top:mirrorTop,
-            selectable:false, evented:false,
-            opacity:0.5, _isMirror:true
-        });
-        if(cloned.forEachObject){
-            cloned.forEachObject(o=>{o.selectable=false;o.evented=false;o._isMirror=true;});
-        }
-        cloned.setCoords();
-        targetCanvas._suppressHistory=true;
-        targetCanvas.add(cloned);
-        targetCanvas._suppressHistory=false;
-        targetCanvas.requestRenderAll();
-        _activeMirror={targetCanvas,mirrorObj:cloned,sourceObj:obj,sourceCanvas};
-    });
-}
-
-function clearEdgeMirror(){
-    if(!_activeMirror)return;
-    const {targetCanvas,mirrorObj}=_activeMirror;
-    try{
-        targetCanvas._suppressHistory=true;
-        targetCanvas.remove(mirrorObj);
-        targetCanvas._suppressHistory=false;
-        targetCanvas.requestRenderAll();
-    }catch(e){}
-    _activeMirror=null;
-}
 
 function duplicateActiveSelection(){
     const context=getActiveSelectionContext();
     if(!context||!context.objects.length)return false;
     const payload={
-        sourcePageNum:context.pageNum,
         objects:serializeObjectsForClipboard(context.objects)
     };
     void pasteClipboardObjects(payload,{targetCanvas:context.canvas});
@@ -3444,31 +3208,30 @@ async function renderPage(n,containerOverride=null){
         fc.freeDrawingBrush.color=currentColor;
         fc.freeDrawingBrush.width=currentStrokeWidth;
 
-        fc.on('object:modified',(e)=>{
-            clearEdgeMirror();
-            if(!fc._restoring){
-                if(e&&e.target&&activeTool==='select'){
-                    if(e.target.type==='activeSelection'){
-                        if(transferActiveSelectionToAdjacentPage(fc,e.target))return;
-                    }else if(transferObjectToAdjacentPage(fc,e.target)){
-                        return;
-                    }
-                }
-                saveCanvasState(fc);
-            }
-            syncSizeControl();
+        fc.on('object:moving',(e)=>{
+            const obj=e.target;
+            if(!obj)return;
+            const vpt=fc.viewportTransform||[1,0,0,1,0,0];
+            const cW=fc.width/(vpt[0]||1), cH=fc.height/(vpt[3]||1);
+            const oW=(obj.getScaledWidth?obj.getScaledWidth():(obj.width||0));
+            const oH=(obj.getScaledHeight?obj.getScaledHeight():(obj.height||0));
+            const minLeft=0, minTop=0;
+            const maxLeft=cW-oW, maxTop=cH-oH;
+            if(obj.left<minLeft)obj.left=minLeft;
+            if(obj.top<minTop)obj.top=minTop;
+            if(obj.left>maxLeft)obj.left=Math.max(minLeft,maxLeft);
+            if(obj.top>maxTop)obj.top=Math.max(minTop,maxTop);
         });
 
-        fc.on('object:moving',(e)=>{
-            if(activeTool==='select'&&e.target){
-                updateEdgeMirror(fc,e.target);
-            }
+        fc.on('object:modified',(e)=>{
+            if(!fc._restoring) saveCanvasState(fc);
+            syncSizeControl();
         });
 
         // Composite highlight layer: render all highlights onto offscreen canvas at full opacity,
         // then draw that single layer onto main canvas at reduced opacity (no overlap stacking)
         fc.on('after:render',()=>{
-            const objs=fc.getObjects().filter(o=>isHighlightLayerObject(o)&&!o._isMirror);
+            const objs=fc.getObjects().filter(o=>isHighlightLayerObject(o));
             if(!objs.length)return;
             const ctx=fc.contextContainer;
             const w=fc.lowerCanvasEl.width, h=fc.lowerCanvasEl.height;
@@ -3609,9 +3372,9 @@ async function renderPage(n,containerOverride=null){
         cont.addEventListener('contextmenu',e=>e.preventDefault());
 
         fabricCanvases.set(n,fc);
-        // Keep all canvases in a shared base coordinate space so annotations stay
-        // consistent across pages rendered at different times/zooms.
-        fc._renderZoom=1;
+        // Objects live in fitScale-relative coords (independent of zoomFactor).
+        // _renderFitScale = fitScale when canvas was created; vpt = baseScale / _renderFitScale.
+        fc._renderFitScale=baseScale/zoomFactor;
         fc.setViewportTransform([zoomFactor,0,0,zoomFactor,0,0]);
         // Lightweight init for this canvas only (no showMsg, no reconfiguring all canvases)
         fc.selection=activeTool==='select';
@@ -4023,10 +3786,10 @@ async function saveAllPagesAsPDF(){
             // Temporarily reset zoom viewport transform so export uses base coordinates
             const savedVpt=fc.viewportTransform.slice();
             const savedW=fc.getWidth(),savedH=fc.getHeight();
-            const renderZoom=fc._renderZoom||1;
+            const currentVptRatio=baseScale/(fc._renderFitScale||(baseScale/zoomFactor));
             fc.setViewportTransform([1,0,0,1,0,0]);
-            fc.setWidth(savedW/(zoomFactor/renderZoom));
-            fc.setHeight(savedH/(zoomFactor/renderZoom));
+            fc.setWidth(savedW/currentVptRatio);
+            fc.setHeight(savedH/currentVptRatio);
             try{
             const page=baseDoc.getPage(pn-1);
             const jsPage=await pdfDoc.getPage(pn);
@@ -4729,6 +4492,42 @@ function clampZoom(newFactor){
     return Math.max(ZOOM_MIN,Math.min(ZOOM_MAX,newFactor));
 }
 
+function getScrollContainer(){
+    return document.scrollingElement||document.documentElement;
+}
+
+function captureViewportFocus(scrollEl){
+    if(!scrollEl)return null;
+    const focusY=scrollEl.scrollTop+scrollEl.clientHeight/2;
+    const pageEl=document.querySelector(`[data-page-num="${currentVisiblePage}"]`);
+    if(pageEl){
+        const rect=pageEl.getBoundingClientRect();
+        const pageTop=scrollEl.scrollTop+rect.top;
+        const height=Math.max(1,rect.height);
+        const percent=clampNumber((focusY-pageTop)/height,0,1);
+        return {type:'page',pageNum:parseInt(pageEl.dataset.pageNum,10)||currentVisiblePage,percent};
+    }
+    const maxScroll=Math.max(1,scrollEl.scrollHeight-scrollEl.clientHeight);
+    return {type:'ratio',ratio:scrollEl.scrollTop/maxScroll};
+}
+
+function restoreViewportFocus(scrollEl,focusState){
+    if(!scrollEl||!focusState)return;
+    const maxScroll=Math.max(0,scrollEl.scrollHeight-scrollEl.clientHeight);
+    if(focusState.type==='page'&&focusState.pageNum){
+        const pageEl=document.querySelector(`[data-page-num="${focusState.pageNum}"]`);
+        if(pageEl){
+            const rect=pageEl.getBoundingClientRect();
+            const pageTop=scrollEl.scrollTop+rect.top;
+            const height=Math.max(1,rect.height);
+            const target=pageTop+focusState.percent*height-scrollEl.clientHeight/2;
+            scrollEl.scrollTop=Math.max(0,Math.min(maxScroll,target));
+            return;
+        }
+    }
+    scrollEl.scrollTop=maxScroll>0?Math.max(0,Math.min(maxScroll,(focusState.ratio||0)*maxScroll)):0;
+}
+
 function getPendingZoomBase(){
     return queuedZoomFactor===null?zoomFactor:queuedZoomFactor;
 }
@@ -4736,18 +4535,17 @@ function getPendingZoomBase(){
 async function applyZoom(newFactor){
     newFactor=clampZoom(newFactor);
     if(Math.abs(newFactor-zoomFactor)<0.001)return;
+    const scrollEl=getScrollContainer();
+    let scrollRatio=0;
+    if(scrollEl){
+        const maxScroll=Math.max(1,scrollEl.scrollHeight-scrollEl.clientHeight);
+        scrollRatio=scrollEl.scrollTop/maxScroll;
+    }
     const editingStates=captureEditingTextStates();
     try{
         zoomFactor=newFactor;
         updateZoomDisplay();
         if(!pdfDoc)return;
-
-        const scrollEl=document.documentElement;
-        let scrollRatio=0;
-        if(scrollEl){
-            const maxScroll=Math.max(1,scrollEl.scrollHeight-scrollEl.clientHeight);
-            scrollRatio=scrollEl.scrollTop/maxScroll;
-        }
 
         const pg1=await pdfDoc.getPage(1);
         const vp1=pg1.getViewport({scale:1});
@@ -4763,8 +4561,7 @@ async function applyZoom(newFactor){
             const cont=document.querySelector(`[data-page-num="${n}"]`);
             if(cont){cont.style.width=`${dw}px`;cont.style.height=`${dh}px`;cont.style.minHeight=`${dh}px`;}
 
-            const renderZoom=fc._renderZoom||1;
-            const vptRatio=zoomFactor/renderZoom;
+            const vptRatio=baseScale/(fc._renderFitScale||(baseScale/zoomFactor));
             fc.setWidth(dw);fc.setHeight(dh);
             fc.setViewportTransform([vptRatio,0,0,vptRatio,0,0]);
             refreshCanvasTextRendering(fc);
@@ -4800,8 +4597,13 @@ async function applyZoom(newFactor){
         }
 
         if(scrollEl){
-            const maxScroll=Math.max(1,scrollEl.scrollHeight-scrollEl.clientHeight);
-            scrollEl.scrollTop=scrollRatio*maxScroll;
+            if(pendingResizeFocus){
+                restoreViewportFocus(scrollEl,pendingResizeFocus);
+                pendingResizeFocus=null;
+            }else{
+                const maxScroll=Math.max(1,scrollEl.scrollHeight-scrollEl.clientHeight);
+                scrollEl.scrollTop=scrollRatio*maxScroll;
+            }
         }
         updateVisiblePage();
         // Deferred offset recalc after DOM reflow settles
@@ -4840,12 +4642,22 @@ document.getElementById('btnZoomIn').addEventListener('click',zoomIn);
 document.getElementById('btnZoomOut').addEventListener('click',zoomOut);
 document.getElementById('btnZoomFit').addEventListener('click',zoomFit);
 
-// Recalculate canvas offsets on window resize/restore to prevent pointer shift
+// Refit canvases on window resize so objects stay in place
 let _resizeTimer=null;
 window.addEventListener('resize',()=>{
     clearTimeout(_resizeTimer);
     _resizeTimer=setTimeout(()=>{
-        fabricCanvases.forEach(fc=>fc.calcOffset());
+        const scrollEl=getScrollContainer();
+        pendingResizeFocus=scrollEl?captureViewportFocus(scrollEl):null;
+        if(pdfDoc&&baseScale!==null){
+            // Force applyZoom to run even though zoomFactor hasn't changed
+            // by temporarily nudging it, so baseScale recalculates from new window width
+            const cur=zoomFactor;
+            zoomFactor=-1;
+            queueZoom(cur);
+        }else{
+            fabricCanvases.forEach(fc=>fc.calcOffset());
+        }
     },150);
 });
 
