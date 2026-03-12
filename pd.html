@@ -2009,15 +2009,25 @@ function getCurrentShapeFill(colorOverride=null){
     return rgbaFromHex(colorOverride||currentColor,shapeFillOpacity/100);
 }
 
+const HIGHLIGHT_LAYER_OPACITY=0.35;
+
 function getHighlightBrushColor(colorOverride=null){
-    return rgbaFromHex(colorOverride||currentColor,0.32);
+    // Semi-transparent for live brush preview during drawing
+    return rgbaFromHex(colorOverride||currentColor,HIGHLIGHT_LAYER_OPACITY);
 }
 
-function getHighlightAreaFillColor(colorOverride=null){
+function getHighlightOpaqueColor(colorOverride=null){
+    // Opaque color used for stored highlight objects (composited via offscreen canvas)
+    return colorOverride||currentColor;
+}
+
+function getHighlightAreaFillColor(colorOverride=null,opaque=false){
+    if(opaque)return colorOverride||currentColor;
     return rgbaFromHex(colorOverride||currentColor,0.24);
 }
 
-function getHighlightAreaStrokeColor(colorOverride=null){
+function getHighlightAreaStrokeColor(colorOverride=null,opaque=false){
+    if(opaque)return colorOverride||currentColor;
     return rgbaFromHex(colorOverride||currentColor,0.6);
 }
 
@@ -2039,13 +2049,15 @@ function isHighlightLayerObject(obj){
 
 function applyHighlightLayerStyling(obj){
     if(!isHighlightLayerObject(obj))return;
+    // Don't hide temp shapes during active drawing
+    if(typeof tempShape!=='undefined'&&obj===tempShape)return;
     obj.set({
         selectable:false,
         evented:false,
         hasControls:false,
         hasBorders:false,
         strokeUniform:true,
-        strokeWidth:0
+        visible:false
     });
     if(obj.canvas) obj.sendToBack();
 }
@@ -2252,32 +2264,11 @@ async function pasteClipboardObjects(payload=objectClipboard,{targetCanvas=null,
 
 function transferObjectToAdjacentPage(sourceCanvas,obj){
     if(!obj||obj.type==='activeSelection')return false;
-    const pageNum=sourceCanvas._pageNum;
-    const vpt=sourceCanvas.viewportTransform||[1,0,0,1,0,0];
-    const canvasHeight=sourceCanvas.height/vpt[3];
-    const objCenter=obj.top+(obj.getScaledHeight?obj.getScaledHeight():obj.height||0)/2;
-
-    let targetPageNum=null;
-    let newTop=obj.top;
-
-    if(objCenter<0){
-        targetPageNum=pageNum-1;
-        if(targetPageNum<1)return false;
-        const targetCanvas=fabricCanvases.get(targetPageNum);
-        if(!targetCanvas)return false;
-        const tVpt=targetCanvas.viewportTransform||[1,0,0,1,0,0];
-        const targetHeight=targetCanvas.height/tVpt[3];
-        newTop=targetHeight+obj.top;
-    }else if(objCenter>canvasHeight){
-        targetPageNum=pageNum+1;
-        const targetCanvas=fabricCanvases.get(targetPageNum);
-        if(!targetCanvas)return false;
-        newTop=obj.top-canvasHeight;
-    }
-
-    if(targetPageNum===null)return false;
-    const targetCanvas=fabricCanvases.get(targetPageNum);
-    if(!targetCanvas)return false;
+    const objH=obj.getScaledHeight?obj.getScaledHeight():obj.height||0;
+    const target=_getMirrorTarget(sourceCanvas,obj.top,obj.top+objH);
+    if(!target)return false;
+    const {targetPageNum,targetCanvas,topOffset}=target;
+    const newTop=obj.top+topOffset;
 
     const serialized=obj.toObject(CLIPBOARD_OBJECT_PROPS);
     serialized.top=newTop;
@@ -2297,9 +2288,6 @@ function transferObjectToAdjacentPage(sourceCanvas,obj){
         targetCanvas._suppressHistory=true;
         targetCanvas.add(newObj);
         targetCanvas._suppressHistory=false;
-        targetCanvas.renderAll();
-        // Recursively transfer if the object still overshoots the target page
-        if(transferObjectToAdjacentPage(targetCanvas,newObj))return;
         targetCanvas.setActiveObject(newObj);
         targetCanvas.renderAll();
         saveCanvasState(targetCanvas);
@@ -2309,68 +2297,153 @@ function transferObjectToAdjacentPage(sourceCanvas,obj){
     return true;
 }
 
+function transferActiveSelectionToAdjacentPage(sourceCanvas,selection){
+    if(!selection||selection.type!=='activeSelection')return false;
+    const objects=selection.getObjects().slice();
+    if(!objects.length)return false;
+
+    // Use the selection GROUP's own top/height (canvas-absolute coords)
+    const selTop=selection.top;
+    const selH=(selection.height||0)*(selection.scaleY||1);
+    const selBottom=selTop+selH;
+
+    const target=_getMirrorTarget(sourceCanvas,selTop,selBottom);
+    if(!target)return false;
+    const {targetPageNum,targetCanvas,topOffset}=target;
+
+    // Capture each object's absolute position using the group's transform
+    // obj.top/left inside activeSelection are relative to group center,
+    // so we use calcTransformMatrix to get absolute canvas coords
+    const absCoords=objects.map(obj=>{
+        const m=obj.calcTransformMatrix();
+        const w=obj.getScaledWidth?obj.getScaledWidth():(obj.width||0);
+        const h=obj.getScaledHeight?obj.getScaledHeight():(obj.height||0);
+        return {absLeft:m[4]-w/2, absTop:m[5]-h/2};
+    });
+
+    // Now discard selection and serialize with captured absolute coords + topOffset
+    sourceCanvas.discardActiveObject();
+
+    const serializedObjects=objects.map((obj,i)=>{
+        const serialized=obj.toObject(CLIPBOARD_OBJECT_PROPS);
+        serialized.left=absCoords[i].absLeft;
+        serialized.top=absCoords[i].absTop+topOffset;
+        if(obj.annotationType)serialized.annotationType=obj.annotationType;
+        return serialized;
+    });
+
+    sourceCanvas._suppressHistory=true;
+    try{ objects.forEach(obj=>sourceCanvas.remove(obj)); }
+    finally{ sourceCanvas._suppressHistory=false; }
+    sourceCanvas.renderAll();
+    saveCanvasState(sourceCanvas);
+
+    fabric.util.enlivenObjects(serializedObjects,restored=>{
+        if(!restored||!restored.length)return;
+        targetCanvas._suppressHistory=true;
+        try{
+            restored.forEach((obj,i)=>{
+                if(serializedObjects[i]&&serializedObjects[i].annotationType)obj.annotationType=serializedObjects[i].annotationType;
+                prepareClipboardObject(obj);
+                targetCanvas.add(obj);
+            });
+        }finally{ targetCanvas._suppressHistory=false; }
+        targetCanvas.discardActiveObject();
+        targetCanvas.requestRenderAll();
+        saveCanvasState(targetCanvas);
+        activeContextPageNum=targetPageNum;
+        showMsg(`Moved selection to page ${targetPageNum}`);
+    });
+    return true;
+}
+
 // ─── CROSS-PAGE MIRROR (shows object on adjacent page) ──
 let _activeMirror=null; // {targetCanvas, mirrorObj, sourceObj, sourceCanvas}
 
-function updateEdgeMirror(sourceCanvas,obj){
-    if(!obj||obj._isMirror||obj.type==='activeSelection'){clearEdgeMirror();return;}
+function _getMirrorTarget(sourceCanvas,objTop,objBottom){
+    // Walk through pages to find where the object center would land
     const vpt=sourceCanvas.viewportTransform||[1,0,0,1,0,0];
-    const zoom=vpt[3];
-    const canvasH=sourceCanvas.height/zoom;
-    const objTop=obj.top;
-    const objH=obj.getScaledHeight?obj.getScaledHeight():obj.height||0;
-    const objBottom=objTop+objH;
+    const canvasH=sourceCanvas.height/(vpt[3]||1);
+    const center=(objTop+objBottom)/2;
     const pageNum=sourceCanvas._pageNum;
 
-    let targetPageNum=null;
-    let mirrorTop=0;
+    if(center>=0&&center<=canvasH)return null; // within bounds
 
-    if(objTop<0){
-        // Extends above → show on previous page
-        targetPageNum=pageNum-1;
-        if(targetPageNum>=1){
-            const tc=fabricCanvases.get(targetPageNum);
-            if(tc){
-                const tVpt=tc.viewportTransform||[1,0,0,1,0,0];
-                const tH=tc.height/tVpt[3];
-                mirrorTop=tH+objTop;
-            }else targetPageNum=null;
-        }else targetPageNum=null;
-    }else if(objBottom>canvasH){
-        // Extends below → show on next page
-        targetPageNum=pageNum+1;
-        const tc=fabricCanvases.get(targetPageNum);
-        if(tc){
-            mirrorTop=objTop-canvasH;
-        }else targetPageNum=null;
+    let cumOffset=0;
+    if(center<0){
+        // Walking upward through pages
+        let pg=pageNum;
+        let rem=center; // negative
+        while(rem<0&&pg>1){
+            pg--;
+            const tc=fabricCanvases.get(pg);
+            if(!tc)return null;
+            const tVpt=tc.viewportTransform||[1,0,0,1,0,0];
+            const tH=tc.height/(tVpt[3]||1);
+            cumOffset+=tH;
+            rem+=tH;
+        }
+        if(pg<1)return null;
+        const tc=fabricCanvases.get(pg);
+        if(!tc)return null;
+        return {targetPageNum:pg,targetCanvas:tc,topOffset:cumOffset};
+    }else{
+        // Walking downward through pages
+        let pg=pageNum;
+        let rem=center;
+        while(rem>0){
+            const tc=fabricCanvases.get(pg);
+            if(!tc)return null;
+            const tVpt=tc.viewportTransform||[1,0,0,1,0,0];
+            const tH=tc.height/(tVpt[3]||1);
+            if(rem<=tH){
+                if(pg===pageNum)return null; // still on source page
+                return {targetPageNum:pg,targetCanvas:tc,topOffset:-cumOffset};
+            }
+            cumOffset+=tH;
+            rem-=tH;
+            pg++;
+        }
+        const tc=fabricCanvases.get(pg);
+        if(!tc)return null;
+        return {targetPageNum:pg,targetCanvas:tc,topOffset:-cumOffset};
     }
+}
 
-    if(targetPageNum===null){clearEdgeMirror();return;}
+function updateEdgeMirror(sourceCanvas,obj){
+    if(!obj||obj._isMirror)return clearEdgeMirror();
 
-    const targetCanvas=fabricCanvases.get(targetPageNum);
-    if(!targetCanvas){clearEdgeMirror();return;}
+    // Treat everything (single or group) as one box using obj's own top/height
+    const objTop=obj.top;
+    const objH=(obj.height||0)*(obj.scaleY||1);
+    const objBottom=objTop+objH;
+    const objLeft=obj.left;
 
-    // Reuse existing mirror if same target, otherwise recreate
+    const target=_getMirrorTarget(sourceCanvas,objTop,objBottom);
+    if(!target)return clearEdgeMirror();
+    const {targetCanvas,topOffset}=target;
+    const mirrorTop=objTop+topOffset;
+
+    // Reuse existing mirror if same target and source, otherwise recreate
     if(_activeMirror&&_activeMirror.targetCanvas===targetCanvas&&_activeMirror.sourceObj===obj){
-        // Just update position
-        _activeMirror.mirrorObj.set({left:obj.left,top:mirrorTop,scaleX:obj.scaleX,scaleY:obj.scaleY,angle:obj.angle});
+        _activeMirror.mirrorObj.set({left:objLeft,top:mirrorTop,scaleX:obj.scaleX,scaleY:obj.scaleY,angle:obj.angle});
         _activeMirror.mirrorObj.setCoords();
         targetCanvas.requestRenderAll();
         return;
     }
 
-    // Clear old mirror first
     clearEdgeMirror();
 
-    // Clone the object for the mirror
     obj.clone((cloned)=>{
         if(!cloned)return;
         cloned.set({
-            left:obj.left,top:mirrorTop,
-            selectable:false,evented:false,
-            opacity:0.5,
-            _isMirror:true
+            left:objLeft, top:mirrorTop,
+            selectable:false, evented:false,
+            opacity:0.5, _isMirror:true
         });
+        if(cloned.forEachObject){
+            cloned.forEachObject(o=>{o.selectable=false;o.evented=false;o._isMirror=true;});
+        }
         cloned.setCoords();
         targetCanvas._suppressHistory=true;
         targetCanvas.add(cloned);
@@ -2525,11 +2598,11 @@ function setObjectColor(obj,color){
         return;
     }
     if(isHighlightPenObject(obj)){
-        obj.set({stroke:getHighlightBrushColor(color)});
+        obj.set({stroke:getHighlightOpaqueColor(color)});
         return;
     }
     if(isHighlightAreaObject(obj)){
-        obj.set({stroke:getHighlightAreaStrokeColor(color),fill:getHighlightAreaFillColor(color)});
+        obj.set({stroke:getHighlightAreaStrokeColor(color,true),fill:getHighlightAreaFillColor(color,true)});
         return;
     }
     if(isArrowGroup(obj)){
@@ -3076,10 +3149,18 @@ function handleShapeEnd(){
             break;
         }
         case 'highlightBox':
-        case 'highlightEllipse':
-            tempShape.set({selectable:true,evented:true,hasControls:true,hasBorders:true,
-                borderColor:'rgba(102,153,255,0.75)',cornerColor:'rgba(102,153,255,0.75)',cornerStyle:'circle',transparentCorners:false});
+        case 'highlightEllipse':{
+            const finishedHL=tempShape;
+            tempShape=null; // Clear ref so applyHighlightLayerStyling won't skip it
+            // Convert semi-transparent preview colors to opaque for composited rendering
+            const hlBaseColor=currentColor;
+            finishedHL.set({
+                fill:getHighlightAreaFillColor(hlBaseColor,true),
+                stroke:getHighlightAreaStrokeColor(hlBaseColor,true),
+                visible:false
+            });
             break;
+        }
     }
     shapeCanvas._suppressHistory=false;
     // Keep all objects locked while in shape/draw mode — only select tool unlocks them
@@ -3366,7 +3447,13 @@ async function renderPage(n,containerOverride=null){
         fc.on('object:modified',(e)=>{
             clearEdgeMirror();
             if(!fc._restoring){
-                if(e&&e.target&&activeTool==='select'&&transferObjectToAdjacentPage(fc,e.target))return;
+                if(e&&e.target&&activeTool==='select'){
+                    if(e.target.type==='activeSelection'){
+                        if(transferActiveSelectionToAdjacentPage(fc,e.target))return;
+                    }else if(transferObjectToAdjacentPage(fc,e.target)){
+                        return;
+                    }
+                }
                 saveCanvasState(fc);
             }
             syncSizeControl();
@@ -3376,6 +3463,40 @@ async function renderPage(n,containerOverride=null){
             if(activeTool==='select'&&e.target){
                 updateEdgeMirror(fc,e.target);
             }
+        });
+
+        // Composite highlight layer: render all highlights onto offscreen canvas at full opacity,
+        // then draw that single layer onto main canvas at reduced opacity (no overlap stacking)
+        fc.on('after:render',()=>{
+            const objs=fc.getObjects().filter(o=>isHighlightLayerObject(o)&&!o._isMirror);
+            if(!objs.length)return;
+            const ctx=fc.contextContainer;
+            const w=fc.lowerCanvasEl.width, h=fc.lowerCanvasEl.height;
+            let offscreen=fc._hlOffscreen;
+            if(!offscreen||offscreen.width!==w||offscreen.height!==h){
+                offscreen=document.createElement('canvas');
+                offscreen.width=w;offscreen.height=h;
+                fc._hlOffscreen=offscreen;
+            }
+            const oCtx=offscreen.getContext('2d');
+            oCtx.clearRect(0,0,w,h);
+            oCtx.save();
+            const vpt=fc.viewportTransform;
+            oCtx.transform(vpt[0],vpt[1],vpt[2],vpt[3],vpt[4],vpt[5]);
+            objs.forEach(o=>{
+                oCtx.save();
+                o.visible=true;
+                o.render(oCtx);
+                o.visible=false;
+                oCtx.restore();
+            });
+            oCtx.restore();
+            ctx.save();
+            ctx.globalAlpha=HIGHLIGHT_LAYER_OPACITY;
+            ctx.globalCompositeOperation='destination-over';
+            ctx.setTransform(1,0,0,1,0,0);
+            ctx.drawImage(offscreen,0,0);
+            ctx.restore();
         });
 
         fc.on('object:added',e=>{
@@ -3395,7 +3516,8 @@ async function renderPage(n,containerOverride=null){
                 const canSelect=activeTool==='select';
                 e.path.set({selectable:canSelect,evented:canSelect,hasControls:true,hasBorders:true,strokeUniform:true});
                 if(activeTool==='highlight'&&highlightMode==='pen'){
-                    e.path.set({opacity:1,annotationType:'highlightPen',
+                    // Convert from semi-transparent brush color to opaque for composited rendering
+                    e.path.set({opacity:1,stroke:getHighlightOpaqueColor(),annotationType:'highlightPen',
                         borderColor:'rgba(102,153,255,0.75)',cornerColor:'rgba(102,153,255,0.75)',cornerStyle:'circle',transparentCorners:false});
                 }
             }
@@ -3640,6 +3762,8 @@ function getExportSourceCanvas(fc,multiplier=1,includeText=true){
     // Prefer fabric's export path so vectors/text are rerendered at higher resolution.
     // NOTE: caller must reset viewport transform to identity before calling this
     const hiddenText=[];
+    const hlObjs=fc?fc.getObjects().filter(o=>isHighlightLayerObject(o)):[];
+    // Highlights are visible:false for live rendering; keep them hidden for base export
     if(fc&&!includeText){
         fc.getObjects().forEach(o=>{
             if(isTextObject(o)&&o.visible!==false&&!shouldRasterizeTextForPdf(o)){
@@ -3649,10 +3773,11 @@ function getExportSourceCanvas(fc,multiplier=1,includeText=true){
         });
         if(hiddenText.length)fc.renderAll();
     }
+    let baseCanvas=null;
     try{
         if(fc&&typeof fc.toCanvasElement==='function'){
             const exported=fc.toCanvasElement(multiplier);
-            if(exported&&exported.width&&exported.height)return exported;
+            if(exported&&exported.width&&exported.height)baseCanvas=exported;
         }
     }catch(e){}
     finally{
@@ -3661,7 +3786,34 @@ function getExportSourceCanvas(fc,multiplier=1,includeText=true){
             fc.renderAll();
         }
     }
-    return fc?fc.lowerCanvasEl:null;
+    if(!baseCanvas)baseCanvas=fc?fc.lowerCanvasEl:null;
+    if(!baseCanvas)return null;
+    // If highlights exist, composite them as a single flat layer behind everything
+    if(hlObjs.length){
+        const w=baseCanvas.width,h=baseCanvas.height;
+        // Render all highlights at full opacity onto offscreen canvas
+        const hlOff=document.createElement('canvas');
+        hlOff.width=w;hlOff.height=h;
+        const hlCtx=hlOff.getContext('2d');
+        hlCtx.scale(multiplier,multiplier);
+        hlObjs.forEach(o=>{
+            hlCtx.save();
+            o.visible=true;
+            o.render(hlCtx);
+            o.visible=false;
+            hlCtx.restore();
+        });
+        // Final composite: highlight layer at reduced opacity, then base annotations on top
+        const out=document.createElement('canvas');
+        out.width=w;out.height=h;
+        const outCtx=out.getContext('2d');
+        outCtx.globalAlpha=HIGHLIGHT_LAYER_OPACITY;
+        outCtx.drawImage(hlOff,0,0);
+        outCtx.globalAlpha=1;
+        outCtx.drawImage(baseCanvas,0,0);
+        return out;
+    }
+    return baseCanvas;
 }
 
 function buildNormalizedOverlayCanvas(fc,rotation,multiplier=SAVE_OVERLAY_SCALE,includeText=true){
@@ -4763,4 +4915,3 @@ window.addEventListener('offline',()=>showMsg('Offline — app still works'));
 
 </body>
 </html>
-
