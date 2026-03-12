@@ -28,6 +28,12 @@
             border-color: #3730a3;
             box-shadow: 0 0 0 2px rgba(79,70,229,0.3);
         }
+        .tool-btn[data-tool="highlight"].active-tool {
+            background: #fde68a;
+            color: #1f2937;
+            border-color: transparent;
+            box-shadow: none;
+        }
         .tool-btn svg { width: 20px; height: 20px; }
         .tool-btn .tool-key {
             position: absolute; bottom: -1px; right: 1px;
@@ -477,6 +483,11 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6.5 19a4 4 0 01-.88-7.9A5.5 5.5 0 0115.5 8a5 5 0 014.42 4.04A3.5 3.5 0 0119 19H6.5z"/></svg>
                 <span class="tool-key">9/V</span>
             </button>
+
+            <!-- Insert Image -->
+            <button id="btnInsertImage" class="tool-btn" title="Insert Image">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+            </button>
         </div>
 
         <div class="divider"></div>
@@ -488,6 +499,7 @@
             <div class="color-swatch" data-color="#22c55e" style="background:#22c55e" title="Green"></div>
             <div class="color-swatch" data-color="#000000" style="background:#000000" title="Black"></div>
             <div class="color-swatch" data-color="#f97316" style="background:#f97316" title="Orange"></div>
+            <div class="color-swatch" data-color="#eab308" style="background:#eab308" title="Yellow"></div>
 
             <div class="rainbow-btn" id="rainbowBtn" title="More colors"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="2"/><circle cx="17.5" cy="10.5" r="2"/><circle cx="8.5" cy="7.5" r="2"/><circle cx="6.5" cy="12.5" r="2"/><path d="M12 2a10 10 0 000 20c1.1 0 2-.9 2-2v-.5c0-.5-.2-1-.5-1.3a1.4 1.4 0 011-2.3H16a8 8 0 00-4-15.6z"/></svg></div>
         </div>
@@ -589,6 +601,7 @@
     <div class="color-popover-swatches" id="popoverSwatches"></div>
 </div>
 
+
 <div class="flex">
 <!-- Left Sidebar -->
 <aside class="w-64 bg-white shadow-xl border-r border-gray-200 overflow-y-auto fixed left-0 top-0 bottom-0 z-10 pt-[88px]">
@@ -633,6 +646,7 @@
 <div class="flex-1 ml-64 mt-[88px] pr-3">
 
 <input type="file" id="fileInput" accept=".pdf,application/pdf">
+<input type="file" id="imageFileInput" accept="image/*" style="display:none;">
 
 <main class="max-w-full mx-auto p-3">
     <div id="pdfViewer" class="flex flex-col items-center">
@@ -802,6 +816,8 @@ const DEFAULT_MAX_STROKE_SIZE=50;
 const DEFAULT_MAX_TEXT_SIZE=300;
 let objectClipboard=null;
 let clipboardPasteCount=0;
+let toolBeforeColorPopover=null;
+let lastCanvasMousePos=null;
 
 const PAGE_SCALE_ADJUST=0.98;
 const ARROW_MODE_OPTIONS=['single','double','note'];
@@ -1912,6 +1928,7 @@ function configureTextObjectRendering(obj){
 function refreshCanvasTextRendering(canvas){
     if(!canvas)return;
     canvas.getObjects().forEach(obj=>{
+        applyHighlightLayerStyling(obj);
         if(isTextObject(obj))configureTextObjectRendering(obj);
     });
 }
@@ -2016,6 +2033,28 @@ function isHighlightPenObject(obj){
     return !!obj&&obj.annotationType==='highlightPen';
 }
 
+function isHighlightLayerObject(obj){
+    return isHighlightPenObject(obj)||isHighlightAreaObject(obj);
+}
+
+function applyHighlightLayerStyling(obj){
+    if(!isHighlightLayerObject(obj))return;
+    obj.set({
+        selectable:false,
+        evented:false,
+        hasControls:false,
+        hasBorders:false,
+        strokeUniform:true,
+        strokeWidth:0
+    });
+    if(obj.canvas) obj.sendToBack();
+}
+
+function normalizeHighlightLayer(canvas){
+    if(!canvas)return;
+    canvas.getObjects().forEach(applyHighlightLayerStyling);
+}
+
 function clearActiveSelectionsExcept(pageNum){
     for(const [pn,canvas] of fabricCanvases){
         if(pn===pageNum)continue;
@@ -2100,6 +2139,10 @@ function enlivenClipboardObjects(serializedObjects){
 function prepareClipboardObject(obj){
     if(!obj)return;
     obj.set({selectable:true,evented:true});
+    if(isHighlightPenObject(obj)||isHighlightAreaObject(obj)){
+        obj.set({borderColor:'rgba(102,153,255,0.75)',cornerColor:'rgba(102,153,255,0.75)',cornerStyle:'circle',transparentCorners:false});
+    }
+    applyHighlightLayerStyling(obj);
     if(isTextObject(obj))configureTextObjectRendering(obj);
     if(isArrowGroup(obj)){
         obj.set({lockScalingX:true,lockScalingY:true});
@@ -2157,13 +2200,36 @@ async function pasteClipboardObjects(payload=objectClipboard,{targetCanvas=null,
     }
     const nextOffset=Number.isFinite(offsetMultiplier)?offsetMultiplier:(clipboardPasteCount+1);
     const delta=KEYBOARD_PASTE_OFFSET*nextOffset;
+
+    // Calculate bounding box center of original objects
+    const allLeft=objects.map(o=>Number(o.left)||0);
+    const allTop=objects.map(o=>Number(o.top)||0);
+    const allRight=objects.map((o,i)=>allLeft[i]+(o.getScaledWidth?o.getScaledWidth():o.width||0));
+    const allBottom=objects.map((o,i)=>allTop[i]+(o.getScaledHeight?o.getScaledHeight():o.height||0));
+    const origCenterX=(Math.min(...allLeft)+Math.max(...allRight))/2;
+    const origCenterY=(Math.min(...allTop)+Math.max(...allBottom))/2;
+
+    // Determine paste target: last mouse position on this canvas, or canvas center
+    let targetX,targetY;
+    const mouseOnTarget=lastCanvasMousePos&&lastCanvasMousePos.pageNum===canvas._pageNum;
+    if(mouseOnTarget){
+        targetX=lastCanvasMousePos.x;
+        targetY=lastCanvasMousePos.y;
+    }else{
+        const vpt=canvas.viewportTransform||[1,0,0,1,0,0];
+        targetX=(-vpt[4]+canvas.width/2)/vpt[0];
+        targetY=(-vpt[5]+canvas.height/2)/vpt[3];
+    }
+    const dx=targetX-origCenterX+delta;
+    const dy=targetY-origCenterY+delta;
+
     const previousVisiblePage=currentVisiblePage;
     canvas._suppressHistory=true;
     canvas.discardActiveObject();
     objects.forEach(obj=>{
         obj.set({
-            left:(Number(obj.left)||0)+delta,
-            top:(Number(obj.top)||0)+delta
+            left:(Number(obj.left)||0)+dx,
+            top:(Number(obj.top)||0)+dy
         });
         prepareClipboardObject(obj);
         canvas.add(obj);
@@ -2182,6 +2248,148 @@ async function pasteClipboardObjects(payload=objectClipboard,{targetCanvas=null,
         showMsg(objects.length>1?`Pasted ${objects.length} objects`:'Pasted');
     }
     return true;
+}
+
+function transferObjectToAdjacentPage(sourceCanvas,obj){
+    if(!obj||obj.type==='activeSelection')return false;
+    const pageNum=sourceCanvas._pageNum;
+    const vpt=sourceCanvas.viewportTransform||[1,0,0,1,0,0];
+    const canvasHeight=sourceCanvas.height/vpt[3];
+    const objCenter=obj.top+(obj.getScaledHeight?obj.getScaledHeight():obj.height||0)/2;
+
+    let targetPageNum=null;
+    let newTop=obj.top;
+
+    if(objCenter<0){
+        targetPageNum=pageNum-1;
+        if(targetPageNum<1)return false;
+        const targetCanvas=fabricCanvases.get(targetPageNum);
+        if(!targetCanvas)return false;
+        const tVpt=targetCanvas.viewportTransform||[1,0,0,1,0,0];
+        const targetHeight=targetCanvas.height/tVpt[3];
+        newTop=targetHeight+obj.top;
+    }else if(objCenter>canvasHeight){
+        targetPageNum=pageNum+1;
+        const targetCanvas=fabricCanvases.get(targetPageNum);
+        if(!targetCanvas)return false;
+        newTop=obj.top-canvasHeight;
+    }
+
+    if(targetPageNum===null)return false;
+    const targetCanvas=fabricCanvases.get(targetPageNum);
+    if(!targetCanvas)return false;
+
+    const serialized=obj.toObject(CLIPBOARD_OBJECT_PROPS);
+    serialized.top=newTop;
+
+    sourceCanvas._suppressHistory=true;
+    sourceCanvas.remove(obj);
+    sourceCanvas.discardActiveObject();
+    sourceCanvas._suppressHistory=false;
+    sourceCanvas.renderAll();
+    saveCanvasState(sourceCanvas);
+
+    fabric.util.enlivenObjects([serialized],objects=>{
+        if(!objects||!objects.length)return;
+        const newObj=objects[0];
+        if(serialized.annotationType)newObj.annotationType=serialized.annotationType;
+        prepareClipboardObject(newObj);
+        targetCanvas._suppressHistory=true;
+        targetCanvas.add(newObj);
+        targetCanvas._suppressHistory=false;
+        targetCanvas.renderAll();
+        // Recursively transfer if the object still overshoots the target page
+        if(transferObjectToAdjacentPage(targetCanvas,newObj))return;
+        targetCanvas.setActiveObject(newObj);
+        targetCanvas.renderAll();
+        saveCanvasState(targetCanvas);
+        activeContextPageNum=targetPageNum;
+        showMsg(`Moved to page ${targetPageNum}`);
+    });
+    return true;
+}
+
+// ─── CROSS-PAGE MIRROR (shows object on adjacent page) ──
+let _activeMirror=null; // {targetCanvas, mirrorObj, sourceObj, sourceCanvas}
+
+function updateEdgeMirror(sourceCanvas,obj){
+    if(!obj||obj._isMirror||obj.type==='activeSelection'){clearEdgeMirror();return;}
+    const vpt=sourceCanvas.viewportTransform||[1,0,0,1,0,0];
+    const zoom=vpt[3];
+    const canvasH=sourceCanvas.height/zoom;
+    const objTop=obj.top;
+    const objH=obj.getScaledHeight?obj.getScaledHeight():obj.height||0;
+    const objBottom=objTop+objH;
+    const pageNum=sourceCanvas._pageNum;
+
+    let targetPageNum=null;
+    let mirrorTop=0;
+
+    if(objTop<0){
+        // Extends above → show on previous page
+        targetPageNum=pageNum-1;
+        if(targetPageNum>=1){
+            const tc=fabricCanvases.get(targetPageNum);
+            if(tc){
+                const tVpt=tc.viewportTransform||[1,0,0,1,0,0];
+                const tH=tc.height/tVpt[3];
+                mirrorTop=tH+objTop;
+            }else targetPageNum=null;
+        }else targetPageNum=null;
+    }else if(objBottom>canvasH){
+        // Extends below → show on next page
+        targetPageNum=pageNum+1;
+        const tc=fabricCanvases.get(targetPageNum);
+        if(tc){
+            mirrorTop=objTop-canvasH;
+        }else targetPageNum=null;
+    }
+
+    if(targetPageNum===null){clearEdgeMirror();return;}
+
+    const targetCanvas=fabricCanvases.get(targetPageNum);
+    if(!targetCanvas){clearEdgeMirror();return;}
+
+    // Reuse existing mirror if same target, otherwise recreate
+    if(_activeMirror&&_activeMirror.targetCanvas===targetCanvas&&_activeMirror.sourceObj===obj){
+        // Just update position
+        _activeMirror.mirrorObj.set({left:obj.left,top:mirrorTop,scaleX:obj.scaleX,scaleY:obj.scaleY,angle:obj.angle});
+        _activeMirror.mirrorObj.setCoords();
+        targetCanvas.requestRenderAll();
+        return;
+    }
+
+    // Clear old mirror first
+    clearEdgeMirror();
+
+    // Clone the object for the mirror
+    obj.clone((cloned)=>{
+        if(!cloned)return;
+        cloned.set({
+            left:obj.left,top:mirrorTop,
+            selectable:false,evented:false,
+            opacity:0.5,
+            _isMirror:true
+        });
+        cloned.setCoords();
+        targetCanvas._suppressHistory=true;
+        targetCanvas.add(cloned);
+        targetCanvas._suppressHistory=false;
+        targetCanvas.requestRenderAll();
+        _activeMirror={targetCanvas,mirrorObj:cloned,sourceObj:obj,sourceCanvas};
+    });
+}
+
+function clearEdgeMirror(){
+    if(!_activeMirror)return;
+    const {targetCanvas,mirrorObj}=_activeMirror;
+    try{
+        targetCanvas._suppressHistory=true;
+        targetCanvas.remove(mirrorObj);
+        targetCanvas._suppressHistory=false;
+        targetCanvas.requestRenderAll();
+    }catch(e){}
+    _activeMirror=null;
 }
 
 function duplicateActiveSelection(){
@@ -2463,36 +2671,38 @@ function setActiveTool(t,{announce=true,persist=true}={}){
 }
 
 function setColor(color,{persist=true,applySelection=true}={}){
-    currentColor=color;
-    document.querySelectorAll('.color-swatch').forEach(s=>s.classList.toggle('active-color',s.dataset.color===color));
-    if(customColorInput)customColorInput.value=color;
+    const normalizedColor=normalizeToolbarColor(color);
+    if(!normalizedColor)return;
+    currentColor=normalizedColor;
+    document.querySelectorAll('.color-swatch').forEach(s=>s.classList.toggle('active-color',s.dataset.color===normalizedColor));
+    if(customColorInput)customColorInput.value=normalizedColor;
 
     // Sync popover controls
     const pw=document.getElementById('popoverWheel');
     const hi=document.getElementById('hexInput');
     const pd=document.getElementById('colorPreviewDot');
     const rb=document.getElementById('rainbowBtn');
-    if(pw)pw.value=color;
-    if(hi)hi.value=color.toUpperCase();
-    if(pd)pd.style.background=color;
-    // If this color isn't a preset swatch, highlight rainbow button instead
-    const isPreset=[...document.querySelectorAll('.color-swatch')].some(s=>s.dataset.color===color);
+    if(pw)pw.value=normalizedColor;
+    if(hi&&document.activeElement!==hi)hi.value=normalizedColor.toUpperCase();
+    if(pd)pd.style.background=normalizedColor;
+    updatePopoverPreview(normalizedColor);
+    const isPreset=[...document.querySelectorAll('.color-swatch')].some(s=>s.dataset.color===normalizedColor);
     if(rb)rb.classList.toggle('active-color',!isPreset);
     // Update draw brush if active
     if(activeTool==='draw'){
         fabricCanvases.forEach(c=>{
-            if(c.freeDrawingBrush) c.freeDrawingBrush.color=color;
+            if(c.freeDrawingBrush) c.freeDrawingBrush.color=normalizedColor;
         });
     }else if(activeTool==='highlight'&&highlightMode==='pen'){
         fabricCanvases.forEach(c=>{
-            if(c.freeDrawingBrush) c.freeDrawingBrush.color=getHighlightBrushColor(color);
+            if(c.freeDrawingBrush) c.freeDrawingBrush.color=getHighlightBrushColor(normalizedColor);
         });
     }
 
     if(applySelection){
         const context=getActiveSelectionContext();
         if(context&&context.objects.length>0){
-            context.objects.forEach(obj=>setObjectColor(obj,color));
+            context.objects.forEach(obj=>setObjectColor(obj,normalizedColor));
             context.canvas.requestRenderAll();
             saveCanvasState(context.canvas);
         }
@@ -2508,6 +2718,18 @@ function syncSizeControl(){
     const showTextControls=mode==='text'||activeTool==='text';
     if(fontControlsGroup)fontControlsGroup.style.display=showTextControls?'flex':'none';
     fontFamilySelect.disabled=mode!=='text';
+
+    const highlightActive=activeTool==='highlight';
+    if(highlightActive){
+        sizeLabel.textContent='Highlight';
+        sizeSlider.value=0;
+        sizeNumber.value=0;
+        sizeSlider.disabled=true;
+        sizeNumber.disabled=true;
+        return;
+    }
+    sizeSlider.disabled=false;
+    sizeNumber.disabled=false;
 
     if(mode==='text'){
         let textSize=currentFontSize;
@@ -2561,6 +2783,7 @@ function syncSizeControl(){
 }
 
 function handleSizeChange(val){
+    if(activeTool==='highlight')return;
     const context=getActiveSelectionContext();
     const mode=getSizeControlMode(context);
     if(mode==='text'){
@@ -2854,7 +3077,8 @@ function handleShapeEnd(){
         }
         case 'highlightBox':
         case 'highlightEllipse':
-            tempShape.set({selectable:true,evented:true,hasControls:true,hasBorders:true});
+            tempShape.set({selectable:true,evented:true,hasControls:true,hasBorders:true,
+                borderColor:'rgba(102,153,255,0.75)',cornerColor:'rgba(102,153,255,0.75)',cornerStyle:'circle',transparentCorners:false});
             break;
     }
     shapeCanvas._suppressHistory=false;
@@ -3130,6 +3354,8 @@ async function renderPage(n,containerOverride=null){
         const fc=new fabric.Canvas(fabEl,{selection:true,isDrawingMode:false,width:dw,height:dh});
         fc._pageNum=n;
         fc._lastSavedState=getSerializedCanvasState(fc);
+        fc.selectionFullyContained=false;
+        fc.targetFindTolerance=10;
         fc._historySeeded=false;
         if(!savedStateByPage.has(n))savedStateByPage.set(n,fc._lastSavedState);
 
@@ -3137,14 +3363,25 @@ async function renderPage(n,containerOverride=null){
         fc.freeDrawingBrush.color=currentColor;
         fc.freeDrawingBrush.width=currentStrokeWidth;
 
-        fc.on('object:modified',()=>{
-            if(!fc._restoring)saveCanvasState(fc);
+        fc.on('object:modified',(e)=>{
+            clearEdgeMirror();
+            if(!fc._restoring){
+                if(e&&e.target&&activeTool==='select'&&transferObjectToAdjacentPage(fc,e.target))return;
+                saveCanvasState(fc);
+            }
             syncSizeControl();
+        });
+
+        fc.on('object:moving',(e)=>{
+            if(activeTool==='select'&&e.target){
+                updateEdgeMirror(fc,e.target);
+            }
         });
 
         fc.on('object:added',e=>{
             const obj=e&&e.target;
             if(!obj)return;
+            applyHighlightLayerStyling(obj);
             if(isTextObject(obj))configureTextObjectRendering(obj);
             if(!isArrowGroup(obj))return;
             obj.set({lockScalingX:true,lockScalingY:true});
@@ -3158,7 +3395,8 @@ async function renderPage(n,containerOverride=null){
                 const canSelect=activeTool==='select';
                 e.path.set({selectable:canSelect,evented:canSelect,hasControls:true,hasBorders:true,strokeUniform:true});
                 if(activeTool==='highlight'&&highlightMode==='pen'){
-                    e.path.set({opacity:1,annotationType:'highlightPen'});
+                    e.path.set({opacity:1,annotationType:'highlightPen',
+                        borderColor:'rgba(102,153,255,0.75)',cornerColor:'rgba(102,153,255,0.75)',cornerStyle:'circle',transparentCorners:false});
                 }
             }
             saveCanvasState(fc);
@@ -3217,6 +3455,7 @@ async function renderPage(n,containerOverride=null){
         });
 
         fc.on('mouse:down',o=>{
+            fc.calcOffset();
             activeContextPageNum=fc._pageNum;
             if(o.e.button===2){
                 isPanning=true;panStartX=o.e.clientX-panOffsetX;panStartY=o.e.clientY-panOffsetY;fc.defaultCursor='grabbing';
@@ -3234,6 +3473,10 @@ async function renderPage(n,containerOverride=null){
                 panOffsetX=o.e.clientX-panStartX;panOffsetY=o.e.clientY-panStartY;
                 pdfViewer.style.transform=`translate(${panOffsetX}px,${panOffsetY}px)`;
             }else handleShapeMove(o);
+            if(!isPanning){
+                const ptr=fc.getPointer(o.e);
+                lastCanvasMousePos={pageNum:fc._pageNum,x:ptr.x,y:ptr.y};
+            }
         });
 
         fc.on('mouse:up',o=>{
@@ -3705,7 +3948,11 @@ function showMsg(m){
 let scrollTicking=false;
 window.addEventListener('scroll',()=>{
     if(scrollTicking)return;scrollTicking=true;
-    requestAnimationFrame(()=>{updateVisiblePage();scrollTicking=false;});
+    requestAnimationFrame(()=>{
+        updateVisiblePage();
+        fabricCanvases.forEach(fc=>fc.calcOffset());
+        scrollTicking=false;
+    });
 },{passive:true});
 
 // ─── KEYBOARD SHORTCUTS ─────────────────────────────
@@ -4087,6 +4334,30 @@ if(fillOpacityNumber)fillOpacityNumber.addEventListener('input',()=>handleFillOp
 // Color swatch clicks
 document.querySelectorAll('.color-swatch').forEach(s=>s.addEventListener('click',()=>{setColor(s.dataset.color);addRecentColor(s.dataset.color);closeColorPopover();}));
 
+function updatePopoverPreview(color){
+    const normalized=normalizeToolbarColor(color)||currentColor;
+    const previewDot=document.getElementById('colorPreviewDot');
+    const hexInput=document.getElementById('hexInput');
+    if(previewDot)previewDot.style.background=normalized;
+    if(hexInput&&document.activeElement!==hexInput)hexInput.value=normalized.toUpperCase();
+}
+
+function bindPopoverSwatchHover(element,color){
+    if(!element)return;
+    const enter=()=>updatePopoverPreview(color);
+    const leave=()=>updatePopoverPreview(currentColor);
+    element.addEventListener('mouseenter',enter);
+    element.addEventListener('focus',enter);
+    element.addEventListener('mouseleave',leave);
+    element.addEventListener('blur',leave);
+}
+
+function restoreToolAfterColorPopover(){
+    if(!toolBeforeColorPopover)return;
+    if(activeTool!==toolBeforeColorPopover)setActiveTool(toolBeforeColorPopover,{announce:false,persist:false});
+    toolBeforeColorPopover=null;
+}
+
 
 // ─── RECENT COLORS ──────────────────────────────────
 function getRecentColors(){
@@ -4115,7 +4386,8 @@ function renderRecentColors(){
         s.className='mini-swatch';
         s.style.background=c;
         if(c==='#ffffff')s.style.border='2px solid #d1d5db';
-        s.addEventListener('click',()=>{setColor(c);closeColorPopover();});
+        bindPopoverSwatchHover(s,c);
+        s.addEventListener('click',()=>{setColor(c);addRecentColor(c);closeColorPopover();});
         container.appendChild(s);
     });
 }
@@ -4147,6 +4419,7 @@ function renderRecentColors(){
         s.className='mini-swatch';
         s.style.background=c;
         if(c==='#ffffff')s.style.border='2px solid #d1d5db';
+        bindPopoverSwatchHover(s,c);
         s.addEventListener('click',()=>{setColor(c);addRecentColor(c);closeColorPopover();});
         swatchContainer.appendChild(s);
     });
@@ -4159,6 +4432,7 @@ function renderRecentColors(){
         e.stopPropagation();
         renderRecentColors();
         if(!popover.classList.contains('open')){
+            toolBeforeColorPopover=activeTool;
             const rect=rainbowBtn.getBoundingClientRect();
             popover.style.top=(rect.bottom+8)+'px';
             // Align right edge with button right edge, clamp to viewport
@@ -4168,8 +4442,10 @@ function renderRecentColors(){
             // Position the arrow to point at the button
             const arrowRight=rect.right-left-10;
             popover.style.setProperty('--arrow-right',Math.max(12,arrowRight)+'px');
+            popover.classList.add('open');
+        }else{
+            closeColorPopover();
         }
-        popover.classList.toggle('open');
     });
 
     // Eyedropper
@@ -4191,17 +4467,17 @@ function renderRecentColors(){
         const c=popoverWheel.value;
         setColor(c);
     });
-    popoverWheel.addEventListener('change',()=>{addRecentColor(popoverWheel.value);});
+    popoverWheel.addEventListener('change',()=>{addRecentColor(popoverWheel.value);closeColorPopover();});
 
     // Hex input
     hexInput.addEventListener('keydown',(e)=>{
         if(e.key==='Enter'){
             e.preventDefault();
-            applyHex();
+            applyHex({close:true});
         }
     });
-    hexInput.addEventListener('blur',applyHex);
-    function applyHex(){
+    hexInput.addEventListener('blur',()=>applyHex());
+    function applyHex({close=false}={}){
         let v=hexInput.value.trim();
         if(!v.startsWith('#'))v='#'+v;
         if(/^#[0-9a-fA-F]{6}$/.test(v)){
@@ -4211,6 +4487,7 @@ function renderRecentColors(){
             setColor(v);addRecentColor(v);
         }
         hexInput.value=currentColor.toUpperCase();
+        if(close)closeColorPopover();
     }
 
     // Close on outside click
@@ -4225,6 +4502,65 @@ function renderRecentColors(){
 function closeColorPopover(){
     const p=document.getElementById('colorPopover');
     if(p)p.classList.remove('open');
+    updatePopoverPreview(currentColor);
+    restoreToolAfterColorPopover();
+}
+
+// ─── IMAGE INSERT ───────────────────────────────────
+(function initImageInsert(){
+    const btnInsertImage=document.getElementById('btnInsertImage');
+    const imageFileInput=document.getElementById('imageFileInput');
+    if(!btnInsertImage||!imageFileInput)return;
+
+    btnInsertImage.addEventListener('click',()=>{imageFileInput.click();});
+
+    imageFileInput.addEventListener('change',(e)=>{
+        const file=e.target.files&&e.target.files[0];
+        if(!file)return;
+        const reader=new FileReader();
+        reader.onload=(evt)=>{insertImageOnCanvas(evt.target.result);};
+        reader.readAsDataURL(file);
+        imageFileInput.value='';
+    });
+})();
+
+function insertImageOnCanvas(dataUrl){
+    const canvas=getClipboardTargetCanvas();
+    if(!canvas){showMsg('Open a PDF first');return;}
+
+    fabric.Image.fromURL(dataUrl,(img)=>{
+        if(!img){showMsg('Failed to load image');return;}
+        const vpt=canvas.viewportTransform||[1,0,0,1,0,0];
+        const canvasW=canvas.width/vpt[0];
+        const canvasH=canvas.height/vpt[3];
+        const maxW=canvasW*0.5;
+        const maxH=canvasH*0.5;
+
+        let scaleX=1,scaleY=1;
+        if(img.width>maxW)scaleX=maxW/img.width;
+        if(img.height>maxH)scaleY=maxH/img.height;
+        const s=Math.min(scaleX,scaleY,1);
+
+        const centerX=canvasW/2;
+        const centerY=canvasH/2;
+        const x=lastCanvasMousePos&&lastCanvasMousePos.pageNum===canvas._pageNum?lastCanvasMousePos.x:centerX;
+        const y=lastCanvasMousePos&&lastCanvasMousePos.pageNum===canvas._pageNum?lastCanvasMousePos.y:centerY;
+
+        img.set({
+            left:x,top:y,
+            originX:'center',originY:'center',
+            scaleX:s,scaleY:s,
+            selectable:true,evented:true,
+            annotationType:'insertedImage'
+        });
+
+        canvas.add(img);
+        canvas.setActiveObject(img);
+        canvas.renderAll();
+        saveCanvasState(canvas);
+        if(activeTool!=='select')setActiveTool('select',{announce:false});
+        showMsg('Image inserted');
+    },{crossOrigin:'anonymous'});
 }
 
 // ─── ZOOM CONTROLS ──────────────────────────────────
@@ -4316,6 +4652,8 @@ async function applyZoom(newFactor){
             scrollEl.scrollTop=scrollRatio*maxScroll;
         }
         updateVisiblePage();
+        // Deferred offset recalc after DOM reflow settles
+        requestAnimationFrame(()=>{fabricCanvases.forEach(fc=>fc.calcOffset());});
     }finally{
         restoreEditingTextStates(editingStates,{resumeEditing:false});
     }
@@ -4349,6 +4687,15 @@ function zoomFit(){queueZoom(1.0);}
 document.getElementById('btnZoomIn').addEventListener('click',zoomIn);
 document.getElementById('btnZoomOut').addEventListener('click',zoomOut);
 document.getElementById('btnZoomFit').addEventListener('click',zoomFit);
+
+// Recalculate canvas offsets on window resize/restore to prevent pointer shift
+let _resizeTimer=null;
+window.addEventListener('resize',()=>{
+    clearTimeout(_resizeTimer);
+    _resizeTimer=setTimeout(()=>{
+        fabricCanvases.forEach(fc=>fc.calcOffset());
+    },150);
+});
 
 // Ctrl+scroll and Ctrl+/- zoom
 document.addEventListener('wheel',(e)=>{
