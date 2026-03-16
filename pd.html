@@ -738,10 +738,10 @@
 </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha512-q+4liFwdPC/bNdhUpZx6aXDx/h77yEQtn4I1slHydcbZK34nLaR3cAeYSJshoxIOq3mjEf7xJE8YWIUHMn+oCQ==" crossorigin="anonymous"></script>
 <script>if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js" integrity="sha512-CeIsOAsgJnmevfCi2C7Zsyy6bQKi43utIjdA87Q0ZY84oDqnI0uwfM9+bKiIkI75lUeI00WG/+uJzOmuHlesMA==" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js" integrity="sha256-D5pcrQeUHwgmWGyU4InYm5GMRuXBfPLVo8b2ZuO8aU8=" crossorigin="anonymous"></script>
 
 <script>
 window.addEventListener('unhandledrejection',e=>{
@@ -810,7 +810,7 @@ const fabricCanvases=new Map();
 const savedStateByPage=new Map();
 const historyStack=[];
 let historyPointer=-1;
-const CLIPBOARD_OBJECT_PROPS=['annotationType','selectable','evented'];
+const CLIPBOARD_OBJECT_PROPS=['annotationType','_hlBaseColor'];
 const KEYBOARD_PASTE_OFFSET=15;
 const DEFAULT_MAX_STROKE_SIZE=50;
 const DEFAULT_MAX_TEXT_SIZE=300;
@@ -1765,7 +1765,7 @@ function persistHighlightModePreference(){
 
 // ─── HISTORY SYSTEM ─────────────────────────────────
 function getSerializedCanvasState(c){
-    return JSON.stringify(c.toJSON(['annotationType','selectable','evented']));
+    return JSON.stringify(c.toJSON(['annotationType','selectable','evented','_hlBaseColor']));
 }
 
 function syncPendingTextEdits(){
@@ -1784,9 +1784,10 @@ function recomputeUnsavedChanges(){
     syncPendingTextEdits();
     if(hasPendingTextEdits){hasUnsavedChanges=true;return;}
     for(const [pn,c] of fabricCanvases){
-        const currentState=getSerializedCanvasState(c);
         const savedState=savedStateByPage.get(pn);
-        if(savedState!==undefined&&currentState!==savedState){
+        if(savedState===undefined)continue;
+        // Compare against last known state to avoid full re-serialization
+        if(c._lastSavedState!==undefined&&c._lastSavedState!==savedState){
             hasUnsavedChanges=true;
             return;
         }
@@ -1825,16 +1826,23 @@ function undo(){
     const entry=historyStack[historyPointer];
     const canvas=fabricCanvases.get(entry.pageNum);
     if(!canvas){historyPointer++;showMsg("Nothing to undo");return;}
+    if(canvas._restoring)return;
     canvas._restoring=true;
     canvas.loadFromJSON(entry.state,()=>{
         canvas._restoring=false;
         refreshCanvasTextRendering(canvas);
+        canvas.forEachObject(o=>{
+            if(isHighlightLayerObject(o))applyHighlightLayerStyling(o);
+            else{o.selectable=activeTool==='select';o.evented=activeTool==='select';}
+        });
         canvas.renderAll();
-        canvas.forEachObject(o=>{o.selectable=activeTool==='select';o.evented=activeTool==='select';});
         canvas._lastSavedState=entry.state;
         recomputeUnsavedChanges();
         syncSizeControl();
-    },(o,obj)=>{if(o.annotationType)obj.annotationType=o.annotationType;});
+    },(o,obj)=>{
+        if(o.annotationType)obj.annotationType=o.annotationType;
+        if(o._hlBaseColor)obj._hlBaseColor=o._hlBaseColor;
+    });
     currentVisiblePage=entry.pageNum;
     activeContextPageNum=entry.pageNum;
     updatePageIndicator();
@@ -1847,16 +1855,23 @@ function redo(){
     const entry=historyStack[historyPointer];
     const canvas=fabricCanvases.get(entry.pageNum);
     if(!canvas){historyPointer--;showMsg("Nothing to redo");return;}
+    if(canvas._restoring)return;
     canvas._restoring=true;
     canvas.loadFromJSON(entry.state,()=>{
         canvas._restoring=false;
         refreshCanvasTextRendering(canvas);
+        canvas.forEachObject(o=>{
+            if(isHighlightLayerObject(o))applyHighlightLayerStyling(o);
+            else{o.selectable=activeTool==='select';o.evented=activeTool==='select';}
+        });
         canvas.renderAll();
-        canvas.forEachObject(o=>{o.selectable=activeTool==='select';o.evented=activeTool==='select';});
         canvas._lastSavedState=entry.state;
         recomputeUnsavedChanges();
         syncSizeControl();
-    },(o,obj)=>{if(o.annotationType)obj.annotationType=o.annotationType;});
+    },(o,obj)=>{
+        if(o.annotationType)obj.annotationType=o.annotationType;
+        if(o._hlBaseColor)obj._hlBaseColor=o._hlBaseColor;
+    });
     currentVisiblePage=entry.pageNum;
     activeContextPageNum=entry.pageNum;
     updatePageIndicator();
@@ -2050,17 +2065,38 @@ function isHighlightLayerObject(obj){
 
 function applyHighlightLayerStyling(obj){
     if(!isHighlightLayerObject(obj))return;
-    // Don't hide temp shapes during active drawing
+    // Don't touch temp shapes during active drawing
     if(typeof tempShape!=='undefined'&&obj===tempShape)return;
-    obj.set({
-        selectable:false,
-        evented:false,
-        hasControls:false,
-        hasBorders:false,
-        strokeUniform:true,
-        visible:false
-    });
-    if(obj.canvas) obj.sendToBack();
+    const inSelectMode=activeTool==='select';
+    if(inSelectMode){
+        // In select mode: visible + selectable so user can click/delete highlights
+        // Use semi-transparent colors so they're visible (overlaps may compound — that's OK while editing)
+        obj.set({
+            selectable:true, evented:true, hasControls:true, hasBorders:true,
+            strokeUniform:true, visible:true,
+            opacity:isHighlightPenObject(obj)?HIGHLIGHT_LAYER_OPACITY:1
+        });
+        if(isHighlightAreaObject(obj)){
+            obj.set({
+                fill:getHighlightAreaFillColor(obj._hlBaseColor||obj.stroke,false),
+                stroke:getHighlightAreaStrokeColor(obj._hlBaseColor||obj.stroke,false)
+            });
+        }
+    }else{
+        // In other modes: hidden from normal render, after:render composites them flat
+        obj.set({
+            selectable:false, evented:false, hasControls:false, hasBorders:false,
+            strokeUniform:true, visible:false,
+            opacity:1
+        });
+        if(isHighlightAreaObject(obj)){
+            obj.set({
+                fill:getHighlightAreaFillColor(obj._hlBaseColor||obj.stroke,true),
+                stroke:getHighlightAreaStrokeColor(obj._hlBaseColor||obj.stroke,true)
+            });
+        }
+        if(obj.canvas) obj.sendToBack();
+    }
 }
 
 function normalizeHighlightLayer(canvas){
@@ -2362,10 +2398,12 @@ function setObjectColor(obj,color){
         return;
     }
     if(isHighlightPenObject(obj)){
+        obj._hlBaseColor=color;
         obj.set({stroke:getHighlightOpaqueColor(color)});
         return;
     }
     if(isHighlightAreaObject(obj)){
+        obj._hlBaseColor=color;
         obj.set({stroke:getHighlightAreaStrokeColor(color,true),fill:getHighlightAreaFillColor(color,true)});
         return;
     }
@@ -2481,10 +2519,12 @@ function setActiveTool(t,{announce=true,persist=true}={}){
     activeTool=t;
     document.querySelectorAll('.tool-btn').forEach(b=>b.classList.toggle('active-tool',b.dataset.tool===t));
 
+    const isFreeDraw=isFreeDrawModeTool(t);
+    const cursor=getCursorForTool(t);
+    const isSelect=t==='select';
     fabricCanvases.forEach(c=>{
-        c.selection=t==='select';
-        c.isDrawingMode=isFreeDrawModeTool(t);
-
+        c.selection=isSelect;
+        c.isDrawingMode=isFreeDraw;
         if(t==='draw'){
             c.freeDrawingBrush=new fabric.PencilBrush(c);
             c.freeDrawingBrush.color=currentColor;
@@ -2492,11 +2532,16 @@ function setActiveTool(t,{announce=true,persist=true}={}){
         }else if(t==='highlight'&&highlightMode==='pen'){
             configureHighlightBrush(c);
         }
-
-        c.defaultCursor=getCursorForTool(t);
-        c.forEachObject(o=>{o.selectable=t==='select';o.evented=t==='select';});
-        if(t!=='select')c.discardActiveObject();
-        c.renderAll();
+        c.defaultCursor=cursor;
+        c.forEachObject(o=>{
+            if(isHighlightLayerObject(o)){
+                applyHighlightLayerStyling(o);
+            }else{
+                o.selectable=isSelect;o.evented=isSelect;
+            }
+        });
+        if(!isSelect)c.discardActiveObject();
+        c.requestRenderAll();
     });
 
     if(arrowModeGroup)arrowModeGroup.classList.toggle('hidden',t!=='arrow');
@@ -2512,9 +2557,7 @@ function setColor(color,{persist=true,applySelection=true}={}){
     if(!normalizedColor)return;
     currentColor=normalizedColor;
     document.querySelectorAll('.color-swatch').forEach(s=>s.classList.toggle('active-color',s.dataset.color===normalizedColor));
-    if(customColorInput)customColorInput.value=normalizedColor;
 
-    // Sync popover controls
     const pw=document.getElementById('popoverWheel');
     const hi=document.getElementById('hexInput');
     const pd=document.getElementById('colorPreviewDot');
@@ -2558,11 +2601,11 @@ function syncSizeControl(){
 
     const highlightActive=activeTool==='highlight';
     if(highlightActive){
-        sizeLabel.textContent='Highlight';
-        sizeSlider.value=0;
-        sizeNumber.value=0;
-        sizeSlider.disabled=true;
-        sizeNumber.disabled=true;
+        sizeLabel.textContent='Size';
+        sizeSlider.value=currentStrokeWidth;
+        sizeNumber.value=currentStrokeWidth;
+        sizeSlider.disabled=false;
+        sizeNumber.disabled=false;
         return;
     }
     sizeSlider.disabled=false;
@@ -2916,8 +2959,8 @@ function handleShapeEnd(){
         case 'highlightEllipse':{
             const finishedHL=tempShape;
             tempShape=null; // Clear ref so applyHighlightLayerStyling won't skip it
-            // Convert semi-transparent preview colors to opaque for composited rendering
             const hlBaseColor=currentColor;
+            finishedHL._hlBaseColor=hlBaseColor;
             finishedHL.set({
                 fill:getHighlightAreaFillColor(hlBaseColor,true),
                 stroke:getHighlightAreaStrokeColor(hlBaseColor,true),
@@ -2992,10 +3035,11 @@ function updateSelectedObjectProperties(){
 }
 
 // ─── PAGE INDICATOR ─────────────────────────────────
+const _piEl=document.getElementById('pageIndicator');
+const _cpnEl=document.getElementById('currentPageNum');
+const _tpnEl=document.getElementById('totalPagesNum');
 function updatePageIndicator(){
-    const pi=document.getElementById('pageIndicator');
-    const cpn=document.getElementById('currentPageNum');
-    const tpn=document.getElementById('totalPagesNum');
+    const pi=_piEl, cpn=_cpnEl, tpn=_tpnEl;
     if(numPages>0){
         pi.classList.remove('hidden');
         cpn.textContent=currentVisiblePage;
@@ -3215,12 +3259,18 @@ async function renderPage(n,containerOverride=null){
             const cW=fc.width/(vpt[0]||1), cH=fc.height/(vpt[3]||1);
             const oW=(obj.getScaledWidth?obj.getScaledWidth():(obj.width||0));
             const oH=(obj.getScaledHeight?obj.getScaledHeight():(obj.height||0));
-            const minLeft=0, minTop=0;
-            const maxLeft=cW-oW, maxTop=cH-oH;
-            if(obj.left<minLeft)obj.left=minLeft;
-            if(obj.top<minTop)obj.top=minTop;
-            if(obj.left>maxLeft)obj.left=Math.max(minLeft,maxLeft);
-            if(obj.top>maxTop)obj.top=Math.max(minTop,maxTop);
+            // Account for object origin (center vs left/top)
+            const ox=obj.originX==='center'?oW/2:obj.originX==='right'?oW:0;
+            const oy=obj.originY==='center'?oH/2:obj.originY==='bottom'?oH:0;
+            const minLeft=0-ox, minTop=0-oy;
+            const maxLeft=cW-oW+ox-ox, maxTop=cH-oH+oy-oy;
+            // Clamp: left edge >= 0, right edge <= cW
+            const effectiveLeft=obj.left-ox;
+            const effectiveTop=obj.top-oy;
+            if(effectiveLeft<0)obj.left=ox;
+            else if(effectiveLeft+oW>cW)obj.left=cW-oW+ox;
+            if(effectiveTop<0)obj.top=oy;
+            else if(effectiveTop+oH>cH)obj.top=cH-oH+oy;
         });
 
         fc.on('object:modified',(e)=>{
@@ -3230,7 +3280,9 @@ async function renderPage(n,containerOverride=null){
 
         // Composite highlight layer: render all highlights onto offscreen canvas at full opacity,
         // then draw that single layer onto main canvas at reduced opacity (no overlap stacking)
+        // In select mode, highlights render normally (visible+selectable) so skip compositing
         fc.on('after:render',()=>{
+            if(activeTool==='select')return;
             const objs=fc.getObjects().filter(o=>isHighlightLayerObject(o));
             if(!objs.length)return;
             const ctx=fc.contextContainer;
@@ -3279,9 +3331,10 @@ async function renderPage(n,containerOverride=null){
                 const canSelect=activeTool==='select';
                 e.path.set({selectable:canSelect,evented:canSelect,hasControls:true,hasBorders:true,strokeUniform:true});
                 if(activeTool==='highlight'&&highlightMode==='pen'){
-                    // Convert from semi-transparent brush color to opaque for composited rendering
+                    e.path._hlBaseColor=currentColor;
                     e.path.set({opacity:1,stroke:getHighlightOpaqueColor(),annotationType:'highlightPen',
                         borderColor:'rgba(102,153,255,0.75)',cornerColor:'rgba(102,153,255,0.75)',cornerStyle:'circle',transparentCorners:false});
+                    applyHighlightLayerStyling(e.path);
                 }
             }
             saveCanvasState(fc);
@@ -3700,14 +3753,16 @@ function drawTextObjectsAsVector(fc,page,rot,box,pdfHelpers){
 }
 
 // ─── SAVE PROGRESS OVERLAY ──────────────────────────
+const _saveEls={};
+function _getSaveEl(id){return _saveEls[id]||(_saveEls[id]=document.getElementById(id));}
 function updateSaveProgress(percent,step,pageInfo){
-    const overlay=document.getElementById('saveOverlay');
-    const bar=document.getElementById('saveBar');
-    const pct=document.getElementById('savePercent');
-    const stepEl=document.getElementById('saveStep');
-    const pageEl=document.getElementById('savePageInfo');
-    const titleEl=document.getElementById('saveTitle');
-    const spinnerEl=document.getElementById('saveSpinner');
+    const overlay=_getSaveEl('saveOverlay');
+    const bar=_getSaveEl('saveBar');
+    const pct=_getSaveEl('savePercent');
+    const stepEl=_getSaveEl('saveStep');
+    const pageEl=_getSaveEl('savePageInfo');
+    const titleEl=_getSaveEl('saveTitle');
+    const spinnerEl=_getSaveEl('saveSpinner');
     if(!overlay)return;
     overlay.classList.remove('hidden');
     if(bar)bar.style.width=percent+'%';
