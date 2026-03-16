@@ -2065,37 +2065,25 @@ function isHighlightLayerObject(obj){
 
 function applyHighlightLayerStyling(obj){
     if(!isHighlightLayerObject(obj))return;
-    // Don't touch temp shapes during active drawing
     if(typeof tempShape!=='undefined'&&obj===tempShape)return;
     const inSelectMode=activeTool==='select';
-    if(inSelectMode){
-        // In select mode: visible + selectable so user can click/delete highlights
-        // Use semi-transparent colors so they're visible (overlaps may compound — that's OK while editing)
+    // Always use opaque colors — after:render composites at HIGHLIGHT_LAYER_OPACITY.
+    // Keep visible:true + opacity:0 so Fabric's hit-testing works in select mode,
+    // but the normal render draws nothing. The offscreen composite draws the real visual.
+    obj.set({
+        selectable:inSelectMode, evented:inSelectMode,
+        hasControls:inSelectMode, hasBorders:inSelectMode,
+        strokeUniform:true, visible:true, opacity:0,
+        perPixelTargetFind:false
+    });
+    if(isHighlightPenObject(obj)){
+        obj.set({stroke:getHighlightOpaqueColor(obj._hlBaseColor||obj.stroke)});
+    }
+    if(isHighlightAreaObject(obj)){
         obj.set({
-            selectable:true, evented:true, hasControls:true, hasBorders:true,
-            strokeUniform:true, visible:true,
-            opacity:isHighlightPenObject(obj)?HIGHLIGHT_LAYER_OPACITY:1
+            fill:getHighlightAreaFillColor(obj._hlBaseColor||obj.stroke,true),
+            stroke:getHighlightAreaStrokeColor(obj._hlBaseColor||obj.stroke,true)
         });
-        if(isHighlightAreaObject(obj)){
-            obj.set({
-                fill:getHighlightAreaFillColor(obj._hlBaseColor||obj.stroke,false),
-                stroke:getHighlightAreaStrokeColor(obj._hlBaseColor||obj.stroke,false)
-            });
-        }
-    }else{
-        // In other modes: hidden from normal render, after:render composites them flat
-        obj.set({
-            selectable:false, evented:false, hasControls:false, hasBorders:false,
-            strokeUniform:true, visible:false,
-            opacity:1
-        });
-        if(isHighlightAreaObject(obj)){
-            obj.set({
-                fill:getHighlightAreaFillColor(obj._hlBaseColor||obj.stroke,true),
-                stroke:getHighlightAreaStrokeColor(obj._hlBaseColor||obj.stroke,true)
-            });
-        }
-        if(obj.canvas) obj.sendToBack();
     }
 }
 
@@ -3244,7 +3232,8 @@ async function renderPage(n,containerOverride=null){
         fc._pageNum=n;
         fc._lastSavedState=getSerializedCanvasState(fc);
         fc.selectionFullyContained=false;
-        fc.targetFindTolerance=10;
+        fc.targetFindTolerance=15;
+        fc.perPixelTargetFind=true;
         fc._historySeeded=false;
         if(!savedStateByPage.has(n))savedStateByPage.set(n,fc._lastSavedState);
 
@@ -3282,8 +3271,7 @@ async function renderPage(n,containerOverride=null){
         // then draw that single layer onto main canvas at reduced opacity (no overlap stacking)
         // In select mode, highlights render normally (visible+selectable) so skip compositing
         fc.on('after:render',()=>{
-            if(activeTool==='select')return;
-            const objs=fc.getObjects().filter(o=>isHighlightLayerObject(o));
+            const objs=fc.getObjects().filter(o=>isHighlightLayerObject(o)&&!o._isMirror);
             if(!objs.length)return;
             const ctx=fc.contextContainer;
             const w=fc.lowerCanvasEl.width, h=fc.lowerCanvasEl.height;
@@ -3299,10 +3287,11 @@ async function renderPage(n,containerOverride=null){
             const vpt=fc.viewportTransform;
             oCtx.transform(vpt[0],vpt[1],vpt[2],vpt[3],vpt[4],vpt[5]);
             objs.forEach(o=>{
+                const savedOpacity=o.opacity;
                 oCtx.save();
-                o.visible=true;
+                o.opacity=1;
                 o.render(oCtx);
-                o.visible=false;
+                o.opacity=savedOpacity;
                 oCtx.restore();
             });
             oCtx.restore();
@@ -3329,7 +3318,7 @@ async function renderPage(n,containerOverride=null){
         fc.on('path:created',e=>{
             if(e.path){
                 const canSelect=activeTool==='select';
-                e.path.set({selectable:canSelect,evented:canSelect,hasControls:true,hasBorders:true,strokeUniform:true});
+                e.path.set({selectable:canSelect,evented:canSelect,hasControls:true,hasBorders:true,strokeUniform:true,padding:8});
                 if(activeTool==='highlight'&&highlightMode==='pen'){
                     e.path._hlBaseColor=currentColor;
                     e.path.set({opacity:1,stroke:getHighlightOpaqueColor(),annotationType:'highlightPen',
