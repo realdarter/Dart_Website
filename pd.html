@@ -2767,6 +2767,7 @@ function createArrowGroup(x1,y1,x2,y2,mode='single'){
             hasBorders:true,
             lockScalingX:true,
             lockScalingY:true,
+            padding:8,
             annotationType:mode==='double'?'doubleArrow':'arrow'
         });
     setArrowGroupAppearance(group,currentStrokeWidth,currentColor);
@@ -2896,7 +2897,7 @@ function handleShapeEnd(){
     shapeCanvas._suppressHistory=true;
     switch(currentShapeKind){
         case 'line':
-            tempShape.set({selectable:true,evented:true,hasControls:true,hasBorders:true});
+            tempShape.set({selectable:true,evented:true,hasControls:true,hasBorders:true,padding:8});
             break;
         case 'arrow':{
             const x1=tempShape.x1,y1=tempShape.y1,x2=tempShape.x2,y2=tempShape.y2;
