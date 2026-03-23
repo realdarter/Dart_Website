@@ -3870,14 +3870,20 @@ async function saveAllPagesAsPDF(){
         await yieldToUI();
         const pdfBytes=await baseDoc.save({useObjectStreams:false});
 
-        updateSaveProgress(96,'Preparing download...');
-        await yieldToUI();
         const blob=new Blob([pdfBytes],{type:'application/pdf'});
         const sourceName=currentFileName||'annotated_document';
         const saveName=/\.pdf$/i.test(sourceName)?sourceName.replace(/\.pdf$/i,'_annotated.pdf'):`${sourceName}_annotated.pdf`;
-        const link=document.createElement('a');
-        link.href=URL.createObjectURL(blob);link.download=saveName;link.click();
-        setTimeout(()=>URL.revokeObjectURL(link.href),60000);
+        if(isDraftReviewMode()){
+            updateSaveProgress(96,'Uploading draft preview...');
+            await yieldToUI();
+            await uploadDraftRenderedPdf(pdfBytes,saveName);
+        }else{
+            updateSaveProgress(96,'Preparing download...');
+            await yieldToUI();
+            const link=document.createElement('a');
+            link.href=URL.createObjectURL(blob);link.download=saveName;link.click();
+            setTimeout(()=>URL.revokeObjectURL(link.href),60000);
+        }
         fabricCanvases.forEach((c,pn)=>{
             const state=getSerializedCanvasState(c);
             c._lastSavedState=state;
@@ -3887,7 +3893,7 @@ async function saveAllPagesAsPDF(){
         recomputeUnsavedChanges();
         syncSizeControl();
 
-        updateSaveProgress(100,stampedPages>0?'PDF saved successfully!':'Saved (no annotations found)','');
+        updateSaveProgress(100,stampedPages>0?(isDraftReviewMode()?'Draft saved successfully!':'PDF saved successfully!'):'Saved (no annotations found)','');
         await yieldToUI();
         setTimeout(hideSaveOverlay,1200);
     }catch(err){
@@ -3895,7 +3901,7 @@ async function saveAllPagesAsPDF(){
         hideSaveOverlay();
         showMsg(`Error: ${err.message}`);
     }
-    finally{btnSavePdf.disabled=false;btnSavePdf.textContent='Save PDF';}
+    finally{btnSavePdf.disabled=false;btnSavePdf.textContent=isDraftReviewMode()?'Save Draft':'Save PDF';}
 }
 
 function showMsg(m){
@@ -4749,7 +4755,193 @@ if(!window.PDFLib){
 })();
 
 // ─── SERVICE WORKER REGISTRATION ────────────────────
+const draftReviewConfig=(()=>{
+    const params=new URLSearchParams(window.location.search);
+    return {
+        token:(params.get('draftToken')||'').trim(),
+        apiUrl:(params.get('apiUrl')||'').trim().replace(/\/+$/,''),
+        publicBaseUrl:(params.get('publicBaseUrl')||window.location.origin).trim().replace(/\/+$/,'')
+    };
+})();
+let draftReviewContext=null;
+const draftAutosaveTimers=new Map();
+let draftReviewBootstrapping=false;
+
+function isDraftReviewMode(){
+    return Boolean(draftReviewConfig.token&&draftReviewConfig.apiUrl);
+}
+
+function ensureDraftSyncBadge(){
+    let badge=document.getElementById('draftSyncBadge');
+    if(badge)return badge;
+    const actionsRow=btnSavePdf&&btnSavePdf.parentElement;
+    if(!actionsRow)return null;
+    badge=document.createElement('div');
+    badge.id='draftSyncBadge';
+    badge.style.cssText='font-size:12px;font-weight:600;padding:6px 10px;border-radius:999px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;';
+    actionsRow.insertBefore(badge,btnSavePdf);
+    return badge;
+}
+
+function setDraftSyncStatus(message,tone='neutral'){
+    const badge=ensureDraftSyncBadge();
+    if(!badge)return;
+    badge.textContent=message;
+    if(tone==='saved'){
+        badge.style.background='#ecfdf5';
+        badge.style.color='#047857';
+        badge.style.borderColor='#a7f3d0';
+    }else if(tone==='pending'){
+        badge.style.background='#eff6ff';
+        badge.style.color='#1d4ed8';
+        badge.style.borderColor='#bfdbfe';
+    }else if(tone==='error'){
+        badge.style.background='#fef2f2';
+        badge.style.color='#b91c1c';
+        badge.style.borderColor='#fecaca';
+    }else{
+        badge.style.background='#f3f4f6';
+        badge.style.color='#374151';
+        badge.style.borderColor='#d1d5db';
+    }
+}
+
+async function draftReviewFetch(path,init={}){
+    const headers=new Headers(init.headers||{});
+    const response=await fetch(`${draftReviewConfig.apiUrl}${path}`,{
+        ...init,
+        credentials:'include',
+        headers
+    });
+    if(response.status===401) throw new Error('Sign in to the workspace to access this draft.');
+    return response;
+}
+
+async function hydrateDraftAnnotations(items){
+    if(!Array.isArray(items)||!items.length)return;
+    const tasks=items.filter(item=>item&&item.fabricJson).map(item=>new Promise(resolve=>{
+        const canvas=fabricCanvases.get(item.pageNumber);
+        if(!canvas){resolve();return;}
+        canvas._restoring=true;
+        canvas.loadFromJSON(item.fabricJson,()=>{
+            canvas._restoring=false;
+            refreshCanvasTextRendering(canvas);
+            canvas.renderAll();
+            canvas._lastSavedState=item.fabricJson;
+            canvas._historySeeded=false;
+            savedStateByPage.set(item.pageNumber,item.fabricJson);
+            resolve();
+        });
+    }));
+    await Promise.all(tasks);
+    recomputeUnsavedChanges();
+}
+
+async function uploadDraftRenderedPdf(pdfBytes,fileName){
+    if(!draftReviewContext?.draft?.id) throw new Error('Draft context missing');
+    const response=await draftReviewFetch(`/drafts/${encodeURIComponent(draftReviewContext.draft.id)}/rendered-pdf`,{
+        method:'PUT',
+        headers:{
+            'Content-Type':'application/pdf',
+            'x-file-name':fileName
+        },
+        body:pdfBytes
+    });
+    if(!response.ok){
+        const body=await response.json().catch(()=>null);
+        throw new Error(body?.error||'Failed to save draft preview');
+    }
+    setDraftSyncStatus('Draft preview saved','saved');
+    showMsg('Draft preview saved');
+}
+
+function queueDraftAnnotationSave(canvas){
+    if(!isDraftReviewMode()||draftReviewBootstrapping||!draftReviewContext?.draft?.id||!canvas||canvas._restoring)return;
+    const pageNum=canvas._pageNum;
+    if(!pageNum)return;
+    const existing=draftAutosaveTimers.get(pageNum);
+    if(existing)clearTimeout(existing);
+    setDraftSyncStatus('Saving changes…','pending');
+    const timer=setTimeout(async()=>{
+        try{
+            const response=await draftReviewFetch(`/drafts/${encodeURIComponent(draftReviewContext.draft.id)}/annotations/${pageNum}`,{
+                method:'PUT',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({fabricJson:getSerializedCanvasState(canvas)})
+            });
+            if(!response.ok){
+                const body=await response.json().catch(()=>null);
+                throw new Error(body?.error||'Autosave failed');
+            }
+            setDraftSyncStatus('All changes saved','saved');
+        }catch(err){
+            console.error('Draft autosave failed:',err);
+            setDraftSyncStatus('Autosave failed','error');
+        }finally{
+            draftAutosaveTimers.delete(pageNum);
+        }
+    },600);
+    draftAutosaveTimers.set(pageNum,timer);
+}
+
+const baseSaveCanvasState=saveCanvasState;
+saveCanvasState=function(canvas){
+    baseSaveCanvasState(canvas);
+    queueDraftAnnotationSave(canvas);
+};
+
+async function initializeDraftReviewMode(){
+    if(!isDraftReviewMode())return;
+    btnLoadPdf.style.display='none';
+    btnSavePdf.textContent='Save Draft';
+    btnSavePdf.title='Save the current draft preview to the server';
+    setDraftSyncStatus('Loading draft…','pending');
+    draftReviewBootstrapping=true;
+    try{
+        const metaResponse=await draftReviewFetch(`/d/${encodeURIComponent(draftReviewConfig.token)}`);
+        if(!metaResponse.ok){
+            const body=await metaResponse.json().catch(()=>null);
+            throw new Error(body?.error||'This draft link is not available.');
+        }
+        draftReviewContext=await metaResponse.json();
+        if(draftReviewContext?.document?.title){
+            document.title=`${draftReviewContext.document.title} | Draft Review`;
+            const fileNameEl=document.getElementById('fileName');
+            if(fileNameEl)fileNameEl.textContent=draftReviewContext.document.title;
+        }
+        const pdfResponse=await draftReviewFetch(`/drafts/${encodeURIComponent(draftReviewContext.draft.id)}/download`);
+        if(!pdfResponse.ok){
+            const body=await pdfResponse.json().catch(()=>null);
+            throw new Error(body?.error||'Failed to load draft PDF');
+        }
+        const blob=await pdfResponse.blob();
+        const sourceName=draftReviewContext?.file?.fileName||`${draftReviewContext?.document?.title||'draft'}.pdf`;
+        await loadPDF(new File([blob],sourceName,{type:'application/pdf'}));
+        await hydrateDraftAnnotations(draftReviewContext.annotations||[]);
+        setDraftSyncStatus('All changes saved','saved');
+        showMsg('Draft loaded');
+    }catch(err){
+        console.error('Draft review init failed:',err);
+        const message=err instanceof Error?err.message:'Failed to load draft';
+        const msg=document.getElementById('initialMessage');
+        if(msg){
+            msg.style.display='block';
+            msg.innerHTML=`<b style="color:#dc2626;">${message}</b><br><span class="text-base">Sign in to the workspace and reopen the review link.</span>`;
+        }
+        setDraftSyncStatus('Draft unavailable','error');
+        showMsg(message);
+    }finally{
+        draftReviewBootstrapping=false;
+    }
+}
+
 if('serviceWorker' in navigator){
+    const disableServiceWorker=isDraftReviewMode()||/^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname);
+    if(disableServiceWorker){
+        navigator.serviceWorker.getRegistrations().then(registrations=>{
+            registrations.forEach(reg=>reg.unregister().catch(()=>{}));
+        }).catch(()=>{});
+    }else{
     navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).then(reg=>{
         reg.update().catch(()=>{});
         if(reg.waiting&&navigator.serviceWorker.controller){
@@ -4763,11 +4955,13 @@ if('serviceWorker' in navigator){
             });
         });
     }).catch(e=>console.warn('SW registration failed:',e));
+    }
 }
 
 // ─── OFFLINE / ONLINE STATUS ────────────────────────
 window.addEventListener('online',()=>showMsg('Back online'));
 window.addEventListener('offline',()=>showMsg('Offline — app still works'));
+initializeDraftReviewMode().catch(err=>console.error('Draft bootstrap failed:',err));
 </script>
 
 </body>
