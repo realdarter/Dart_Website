@@ -102,6 +102,31 @@
         .pdf-page-container .canvas-container {
             position: absolute !important; top: 0; left: 0;
         }
+        /* Text layer: invisible spans positioned over each page so the
+           browser's native Ctrl+F can find and scroll to text. Stays below
+           the Fabric overlay so annotation tools still receive clicks, but
+           text remains selectable when no tool is active. */
+        .pdf-text-layer {
+            position: absolute; top: 0; left: 0;
+            overflow: hidden;
+            opacity: 1; line-height: 1;
+            user-select: text;
+            pointer-events: none; /* annotation layer above takes clicks */
+        }
+        .pdf-text-layer > span,
+        .pdf-text-layer > br {
+            color: transparent;
+            position: absolute;
+            white-space: pre;
+            transform-origin: 0% 0%;
+            cursor: text;
+            pointer-events: auto;
+        }
+        .pdf-text-layer ::selection { background: rgba(59,130,246,0.35); color: transparent; }
+        /* When the user is in pan/select-only mode (no annotation tool active)
+           we lift the text layer above the fabric canvas so they can highlight
+           and copy text. Toggled by JS via .text-select-mode. */
+        body.text-select-mode .pdf-text-layer { pointer-events: auto; z-index: 5; }
         .filename-display {
             max-width: 200px; overflow: hidden;
             text-overflow: ellipsis; white-space: nowrap;
@@ -3191,6 +3216,81 @@ async function ensurePagePdfLayerAtCurrentZoom(pageNum,container,force=false){
     }
 }
 
+// Render a text layer over a PDF page. Spans are positioned to match the
+// rendered canvas exactly so the browser's native Ctrl+F highlights line up.
+// Uses pdfjsLib.renderTextLayer when available (PDF.js 3.x) and falls back
+// to manual span positioning otherwise. The layer is reused across re-renders.
+async function renderPdfTextLayer(pg, viewport, container, displayWidth, displayHeight){
+    let textLayerDiv=container.querySelector('.pdf-text-layer');
+    if(textLayerDiv){
+        // Already built. Just resize.
+        textLayerDiv.style.width=`${displayWidth}px`;
+        textLayerDiv.style.height=`${displayHeight}px`;
+        return;
+    }
+    textLayerDiv=document.createElement('div');
+    textLayerDiv.className='pdf-text-layer';
+    textLayerDiv.style.width=`${displayWidth}px`;
+    textLayerDiv.style.height=`${displayHeight}px`;
+    container.appendChild(textLayerDiv);
+
+    const textContent=await pg.getTextContent();
+    // Prefer PDF.js's built-in helper if it exists (handles RTL, ligatures, etc.)
+    if(typeof pdfjsLib.renderTextLayer==='function'){
+        const task=pdfjsLib.renderTextLayer({
+            textContent,
+            container:textLayerDiv,
+            viewport,
+            textDivs:[],
+        });
+        // PDF.js 3.x returns a task object with a `.promise` field
+        if(task&&task.promise)await task.promise;
+        return;
+    }
+    // Manual fallback
+    const Util=pdfjsLib.Util;
+    const frag=document.createDocumentFragment();
+    for(const item of textContent.items){
+        if(!item.str)continue;
+        const tx=Util?Util.transform(viewport.transform,item.transform):item.transform;
+        const fontHeight=Math.hypot(tx[2],tx[3]);
+        const span=document.createElement('span');
+        span.textContent=item.str;
+        span.style.left=`${tx[4]}px`;
+        span.style.top=`${tx[5]-fontHeight}px`;
+        span.style.fontSize=`${fontHeight}px`;
+        span.style.fontFamily=item.fontName||'sans-serif';
+        frag.appendChild(span);
+    }
+    textLayerDiv.appendChild(frag);
+}
+
+// Eagerly build text-only layers for every page on document load so Ctrl+F
+// can find text in pages the user hasn't scrolled to yet. Skips canvas
+// rasterisation — text extraction alone is cheap (~10-50 ms per page).
+async function buildAllTextLayersForSearch(){
+    if(!pdfDoc)return;
+    const containers=document.querySelectorAll('.pdf-page-container');
+    for(const cont of containers){
+        const n=Number(cont.dataset.pageNum);
+        if(!n)continue;
+        // Already has a text layer? Skip.
+        if(cont.querySelector('.pdf-text-layer'))continue;
+        try{
+            const pg=await pdfDoc.getPage(n);
+            const w=parseFloat(cont.style.width)||0;
+            const h=parseFloat(cont.style.height)||0;
+            // Compute viewport at the same scale used during canvas render.
+            const baseVp=pg.getViewport({scale:1});
+            const scaleNow=w?w/baseVp.width:1;
+            const vp=pg.getViewport({scale:scaleNow});
+            await renderPdfTextLayer(pg, vp, cont, w||vp.width, h||vp.height);
+        }catch(e){console.debug('eager text layer failed',n,e);}
+        // Yield so the UI stays responsive.
+        await new Promise(r=>setTimeout(r,0));
+    }
+}
+
 async function renderPage(n,containerOverride=null){
     let cont=null;
     let markedRendering=false;
@@ -3223,6 +3323,12 @@ async function renderPage(n,containerOverride=null){
         if(!didRenderPdf)return null;
 
         if(!cont.parentElement)pdfViewer.appendChild(cont);
+
+        // Text layer for native Ctrl+F search. Built once per page; reused.
+        // Sits between the canvas and the Fabric annotation layer.
+        try{
+            await renderPdfTextLayer(pg, rv, cont, dw, dh);
+        }catch(e){console.debug('text layer failed',n,e);}
 
         const fabEl=document.createElement('canvas');
         fabEl.id=`fabric-canvas-${n}`;
@@ -3511,6 +3617,9 @@ async function loadPDF(f){
         await renderAllPages();
         btnSavePdf.disabled=false;recomputeUnsavedChanges();
         showMsg(`PDF loaded: ${numPages} page(s)`);
+        // Build text layers for every page in the background so Ctrl+F can
+        // find text on pages the user hasn't scrolled to yet. Non-blocking.
+        buildAllTextLayersForSearch().catch(e=>console.debug('text layer build failed',e));
     }catch(e){
         console.error('Load err:',e);
         fabricCanvases.forEach(c=>{try{c.dispose();}catch(ex){}});
