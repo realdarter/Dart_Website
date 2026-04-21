@@ -1,42 +1,21 @@
-// DraftAnnotator Service Worker — caches CDN libs for offline use
-const CACHE_NAME = 'draftannotator-v3';
+// Dart Website Service Worker — caches app shell for offline use
+const CACHE_NAME = 'dart-website-v1';
 const APP_SHELL = [
     './',
-    './pd.html'
-];
-const CDN_ASSETS = [
-    'https://cdn.tailwindcss.com',
-    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
-    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
-    'https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js',
-    'https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js'
+    './main.html',
+    './pd.html',
+    './css/style1.css',
+    './main.js'
 ];
 
-// Install: pre-cache the app shell and all CDN dependencies
 self.addEventListener('install', event => {
     event.waitUntil(
-        caches.open(CACHE_NAME).then(cache =>
-            Promise.all([
-                cache.addAll(APP_SHELL),
-                // CDN resources: fetch with cors, cache even if opaque
-                ...CDN_ASSETS.map(url =>
-                    fetch(url, {mode: 'cors'})
-                        .then(resp => {
-                            if (resp.ok || resp.type === 'opaque') cache.put(url, resp);
-                        })
-                        .catch(() => {
-                            // If cors fails, try no-cors (opaque but still cacheable)
-                            return fetch(url, {mode: 'no-cors'})
-                                .then(resp => cache.put(url, resp))
-                                .catch(() => console.warn('SW: could not cache', url));
-                        })
-                )
-            ])
-        ).then(() => self.skipWaiting())
+        caches.open(CACHE_NAME)
+            .then(cache => cache.addAll(APP_SHELL))
+            .then(() => self.skipWaiting())
     );
 });
 
-// Activate: clean up old caches
 self.addEventListener('activate', event => {
     event.waitUntil(
         caches.keys()
@@ -47,47 +26,24 @@ self.addEventListener('activate', event => {
     );
 });
 
-// Fetch: cache-first for known assets, network-first for everything else
 self.addEventListener('fetch', event => {
-    const url = event.request.url;
-
-    // For CDN assets and app shell: serve from cache, fall back to network
-    const isCached = CDN_ASSETS.includes(url) ||
-        event.request.destination === 'document' ||
-        url.endsWith('pd.html');
-
-    if (isCached) {
+    // Network-first for HTML (always get latest), cache-first for assets
+    if (event.request.destination === 'document') {
         event.respondWith(
-            caches.match(event.request).then(cached => {
-                // Return cached version immediately
-                if (cached) {
-                    // Update cache in background (stale-while-revalidate)
-                    event.waitUntil(
-                        fetch(event.request.clone()).then(resp => {
-                            if (resp.ok || resp.type === 'opaque') {
-                                return caches.open(CACHE_NAME).then(c => c.put(event.request, resp));
-                            }
-                        }).catch(() => {})
-                    );
-                    return cached;
-                }
-                // Not cached yet — fetch and cache
-                return fetch(event.request).then(resp => {
+            fetch(event.request)
+                .then(resp => {
                     const clone = resp.clone();
                     event.waitUntil(
                         caches.open(CACHE_NAME).then(c => c.put(event.request, clone))
                     );
                     return resp;
-                });
-            }).catch(() => {
-                // Total offline fallback for navigation
-                if (event.request.destination === 'document') {
-                    return caches.match('./pd.html');
-                }
-            })
+                })
+                .catch(() => caches.match(event.request))
         );
         return;
     }
 
-    // All other requests (user PDFs, etc): network only, no caching
+    event.respondWith(
+        caches.match(event.request).then(cached => cached || fetch(event.request))
+    );
 });
